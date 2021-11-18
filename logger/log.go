@@ -1,4 +1,4 @@
-package logFile
+package logger
 
 import(
     "log"
