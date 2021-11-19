@@ -13,6 +13,12 @@ import (
 	"google.golang.org/grpc"
 )
 
+var (
+	serverId    int32
+	port = 3000
+)
+
+
 type message struct {
 	ClientUniqueCode int32
 	ClientName       string
@@ -27,7 +33,7 @@ type raw struct {
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	buyers sync.Map
+	buyers      sync.Map
 	unsubscribe []int32
 }
 
@@ -40,7 +46,7 @@ type sub struct {
 var messageHandle = raw{}
 
 func (s *Server) Broadcast(request *protos.Subscription, stream protos.AuctionhouseService_BroadcastServer) error {
-	
+
 	fin := make(chan bool)
 
 	s.buyers.Store(request.ClientId, sub{stream: stream, finished: fin, name: request.UserName})
@@ -85,10 +91,10 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 				}
 				// Send data over the gRPC stream to the client
 				if err := sub.stream.Send(&protos.ChatRoomMessages{
-					Msg:              messageFromServer,
-					Username:         senderName,
-					ClientId:         senderUniqueCode,
-					Code:             messageCode,
+					Msg:      messageFromServer,
+					Username: senderName,
+					ClientId: senderUniqueCode,
+					Code:     messageCode,
 				}); err != nil {
 					logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
 					s.unsubscribe = append(s.unsubscribe, id)
@@ -192,16 +198,17 @@ func sendToStream(srv protos.AuctionhouseService_PublishServer, er_ chan error) 
 }
 
 func main() {
-	logger.LogFileInit()
+	serverId = 1
+	logger.LogFileInit("server", serverId)
 
-	port := 3000
+	s := &Server{}
+
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		logger.InfoLogger.Printf(fmt.Sprintf("FATAL: Connection unable to establish. Failed to listen: %v", err))
 	}
 
-	s := &Server{}
 
 	grpcServer := grpc.NewServer()
 
@@ -212,7 +219,6 @@ func main() {
 			logger.ErrorLogger.Fatalf("FATAL: Server connection failed: %s", err)
 		}
 	}()
-
 
 	var o string
 	fmt.Scanln(&o)

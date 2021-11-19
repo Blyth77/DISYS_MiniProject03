@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"strings"
@@ -18,15 +17,16 @@ import (
 )
 
 var (
+	port           = ":3000"
 	checkingStatus bool
 	connected      bool
 	clientName     string
-	ID             int32 
+	ID             int32
 )
 
 type AuctionClient struct {
 	clientService protos.AuctionhouseServiceClient
-	conn          *grpc.ClientConn 
+	conn          *grpc.ClientConn
 }
 
 type clienthandle struct {
@@ -34,11 +34,13 @@ type clienthandle struct {
 }
 
 func main() {
-	logger.LogFileInit()
 	Output(WelcomeMsg())
 
-	rand.Seed(time.Now().UnixNano())
-	ID = int32(rand.Intn(1e6))
+	setup()
+	ID = int32(rand.Intn(1e4))
+
+	logger.LogFileInit("client", ID)
+
 
 	client, err := makeClient()
 	if err != nil {
@@ -47,6 +49,21 @@ func main() {
 
 	client.EnterUsername()
 
+	ch := client.setupStream()
+
+	go client.receiveMessage()
+	go ch.sendMessage(*client)
+	go ch.recvStatus()
+
+	bl := make(chan bool)
+	<-bl
+}
+
+func setup() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func (client *AuctionClient) setupStream() clienthandle{
 	streamOut, err := client.clientService.Publish(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService :: %v", err)
@@ -55,14 +72,7 @@ func main() {
 	ch := clienthandle{
 		streamOut: streamOut,
 	}
-
-	go client.receiveMessage()
-	go ch.sendMessage(*client)
-	go ch.recvStatus()
-
-	//blocker
-	bl := make(chan bool)
-	<-bl
+	return ch
 }
 
 func (cc *AuctionClient) receiveMessage() {
@@ -72,7 +82,7 @@ func (cc *AuctionClient) receiveMessage() {
 	for {
 		if stream == nil {
 			if stream, err = cc.subscribe(); err != nil {
-				UserInput() 
+				UserInput()
 				Output("Closing client")
 				logger.ErrorLogger.Fatalf("Failed to join: %v", err)
 				cc.sleep()
@@ -123,7 +133,7 @@ func makeClient() (*AuctionClient, error) {
 
 func makeConnection() (*grpc.ClientConn, error) {
 	logger.InfoLogger.Print("Connecting to the auctionhouse...")
-	return grpc.Dial(":3000", []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
+	return grpc.Dial(port, []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
 }
 
 func (ch *clienthandle) recvStatus() {
@@ -146,10 +156,10 @@ func (ch *clienthandle) sendMessage(client AuctionClient) {
 		if strings.Contains(clientMessage, "-- quit") {
 			Output("Logical Timestamp:%d, connection to server closed. Press any key to exit.\n")
 			clientMessageBox := &protos.ClientMessage{
-				ClientId:         ID,
-				UserName:         clientName,
-				Msg:              "",
-				Code:             2,
+				ClientId: ID,
+				UserName: clientName,
+				Msg:      "",
+				Code:     2,
 			}
 
 			err := ch.streamOut.Send(clientMessageBox)
@@ -163,10 +173,10 @@ func (ch *clienthandle) sendMessage(client AuctionClient) {
 		} else {
 
 			clientMessageBox := &protos.ClientMessage{
-				ClientId:         ID,
-				UserName:         clientName,
-				Msg:              clientMessage,
-				Code:             1,
+				ClientId: ID,
+				UserName: clientName,
+				Msg:      clientMessage,
+				Code:     1,
 			}
 
 			err := ch.streamOut.Send(clientMessageBox)
@@ -190,22 +200,6 @@ ______________________________________________________
 Please enter an username to begin:`
 }
 
-func LimitReader(s string) string {
-	limit := 128
-
-	reader := strings.NewReader(s)
-
-	buff := make([]byte, limit)
-
-	n, _ := io.ReadAtLeast(reader, buff, limit)
-
-	if n != 0 {
-		return string(buff)
-	} else {
-		return s
-	}
-}
-
 func (s *AuctionClient) EnterUsername() {
 	clientName = UserInput()
 	Welcome(clientName)
@@ -221,7 +215,7 @@ func UserInput() string {
 	}
 	msg = strings.Trim(msg, "\r\n")
 
-	return LimitReader(msg)
+	return msg
 }
 
 func Welcome(input string) {
