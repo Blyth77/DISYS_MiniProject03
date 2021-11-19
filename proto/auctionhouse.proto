@@ -1,0 +1,51 @@
+/* 
+  Generate-files:
+    protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative ChittyChat.proto
+*/
+
+syntax = "proto3";
+package proto;
+
+option go_package = "./proto"; 
+
+
+service ChittyChatService {
+  rpc Publish(stream ClientMessage) returns (stream StatusMessage) {}
+  rpc Broadcast(Subscription) returns (stream ChatRoomMessages) {}
+  // rpc Connection (Subscription) returns (Subscription);
+}
+
+message Subscription {
+  int32 clientId = 1;
+  string userName = 2;
+  int32 lamportTimestamp = 3;
+}
+
+message ClientMessage {
+  int32 clientId = 1;
+  string userName = 2;
+  string msg = 3;
+  int32 lamportTimestamp = 4; 
+  int32 code = 5;
+}
+
+message ChatRoomMessages {
+  string msg = 1;
+  int32 lamportTimestamp = 2; 
+  string username = 3;
+  int32 clientId = 4;
+  int32 code = 5;
+}
+
+message StatusMessage {
+  string operation = 1;
+  Status status = 2;
+}
+
+enum Status {
+  INVALID = 0;
+  SUCCESS = 1;
+  FAILURE = 2;
+}
+
+

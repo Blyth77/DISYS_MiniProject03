@@ -8,6 +8,7 @@ import (
 	"time"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
+	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
 
 	"google.golang.org/grpc"
 )
@@ -29,7 +30,7 @@ type Server struct {
 	protos.UnimplementedChittyChatServiceServer
 	subscribers sync.Map
 	unsubscribe []int32
-	lamport     protos.LamportTimestamp
+	lamport     int
 }
 
 type sub struct {
@@ -42,15 +43,13 @@ var messageHandle = raw{}
 
 func (s *Server) Broadcast(request *protos.Subscription, stream protos.ChittyChatService_BroadcastServer) error {
 	//fmt.Printf("Receiving lamport from client: %d\n", request.LamportTimestamp)
-	s.lamport.RecieveIncomingLamportInt(request.LamportTimestamp) // the server is recieving a message of a new client joining
-	logger.InfoLogger.Printf("Lamp.t.: %d, Received subscribe request from ID: %d", s.lamport.Timestamp, request.ClientId)
+	logger.InfoLogger.Printf("Lamp.t.: , Received subscribe request from ID: %d", request.ClientId)
 	fin := make(chan bool)
 
 	s.subscribers.Store(request.ClientId, sub{stream: stream, finished: fin, name: request.UserName})
 
-	// Connecting
-	addToMessageQueue(request.ClientId, s.lamport.Timestamp, 1, request.UserName, "")
-	Output(fmt.Sprintf("ID: %v Name: %v, joined chat at timestamp %d", request.ClientId, request.UserName, s.lamport.Timestamp))
+	addToMessageQueue(request.ClientId, 1, request.UserName, "")
+	Output(fmt.Sprintf("ID: %v Name: %v, joined chat at timestamp ", request.ClientId, request.UserName))
 
 	go s.sendToClients(stream)
 
@@ -60,10 +59,8 @@ func (s *Server) Broadcast(request *protos.Subscription, stream protos.ChittyCha
 
 func (s *Server) sendToClients(srv protos.ChittyChatService_BroadcastServer) {
 	logger.InfoLogger.Println("Request send to clients")
-	//implement a loop
 	for {
 
-		//loop through messages in MessageQue
 		for {
 
 			time.Sleep(500 * time.Millisecond)
@@ -74,12 +71,7 @@ func (s *Server) sendToClients(srv protos.ChittyChatService_BroadcastServer) {
 				messageHandle.mu.Unlock()
 				break
 			}
-			fmt.Printf("Lamport in server: %d\n", s.lamport.Timestamp)
 			fmt.Printf("Lamport from message: %d\n", messageHandle.MessageQue[0].Lamport)
-			s.lamport.RecieveIncomingLamportInt(messageHandle.MessageQue[0].Lamport) // dette er for at checke hvilken timestamp har max også +1 til den værdi
-			fmt.Printf("Lamport from server converting to message: %d", s.lamport.Timestamp)
-			messageHandle.MessageQue[0].Lamport = s.lamport.Timestamp // test
-			// i dette tilfælde burde den incremente serverens timestamp blive 6+1 efter 1 besked sendt af client nr.2
 			senderUniqueCode := messageHandle.MessageQue[0].ClientUniqueCode
 			senderName := messageHandle.MessageQue[0].ClientName
 			LamportTimestamp := messageHandle.MessageQue[0].Lamport
@@ -142,7 +134,7 @@ func (s *Server) killSignals() {
 			logger.WarningLogger.Panicf("Failed to cast subscriber value: %T", sub)
 		}
 		if m != nil {
-			addToMessageQueue(id, s.lamport.Timestamp, 3, sub.name, "")
+			addToMessageQueue(id, 3, sub.name, "")
 		}
 		s.subscribers.Delete(id)
 		Output(fmt.Sprintf("Client: %v disconnected", id))
@@ -153,7 +145,6 @@ func (s *Server) Publish(srv protos.ChittyChatService_PublishServer) error {
 	logger.InfoLogger.Println("Requests publish")
 	er := make(chan error)
 
-	s.lamport.Tick()
 	go s.receiveFromStream(srv, er)
 	go sendToStream(srv, er)
 
@@ -176,13 +167,13 @@ func (s *Server) receiveFromStream(srv protos.ChittyChatService_PublishServer, e
 			s.unsubscribe = append(s.unsubscribe, id)
 			s.killSignals()
 		case mssg.Code == 1: // chatting
-			addToMessageQueue(id, mssg.LamportTimestamp, 2, mssg.UserName, mssg.Msg)
+			addToMessageQueue(id, 2, mssg.UserName, mssg.Msg)
 		default:
 		}
 	}
 }
 
-func addToMessageQueue(id, lamport, code int32, username, msg string) {
+func addToMessageQueue(id, code int32, username, msg string) {
 	messageHandle.mu.Lock()
 
 	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
@@ -190,7 +181,6 @@ func addToMessageQueue(id, lamport, code int32, username, msg string) {
 		ClientName:       username,
 		Msg:              msg,
 		MessageCode:      code,
-		Lamport:          lamport,
 	})
 
 	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
