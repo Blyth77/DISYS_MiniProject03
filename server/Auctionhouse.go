@@ -18,7 +18,6 @@ type message struct {
 	ClientName       string
 	Msg              string
 	MessageCode      int32
-	Lamport          int32
 }
 
 type raw struct {
@@ -27,29 +26,26 @@ type raw struct {
 }
 
 type Server struct {
-	protos.UnimplementedChittyChatServiceServer
-	subscribers sync.Map
+	protos.UnimplementedAuctionhouseServiceServer
+	buyers sync.Map
 	unsubscribe []int32
-	lamport     int
 }
 
 type sub struct {
-	stream   protos.ChittyChatService_BroadcastServer
+	stream   protos.AuctionhouseService_BroadcastServer
 	finished chan<- bool
 	name     string
 }
 
 var messageHandle = raw{}
 
-func (s *Server) Broadcast(request *protos.Subscription, stream protos.ChittyChatService_BroadcastServer) error {
-	//fmt.Printf("Receiving lamport from client: %d\n", request.LamportTimestamp)
-	logger.InfoLogger.Printf("Lamp.t.: , Received subscribe request from ID: %d", request.ClientId)
+func (s *Server) Broadcast(request *protos.Subscription, stream protos.AuctionhouseService_BroadcastServer) error {
+	
 	fin := make(chan bool)
 
-	s.subscribers.Store(request.ClientId, sub{stream: stream, finished: fin, name: request.UserName})
+	s.buyers.Store(request.ClientId, sub{stream: stream, finished: fin, name: request.UserName})
 
 	addToMessageQueue(request.ClientId, 1, request.UserName, "")
-	Output(fmt.Sprintf("ID: %v Name: %v, joined chat at timestamp ", request.ClientId, request.UserName))
 
 	go s.sendToClients(stream)
 
@@ -57,10 +53,8 @@ func (s *Server) Broadcast(request *protos.Subscription, stream protos.ChittyCha
 	return <-bl
 }
 
-func (s *Server) sendToClients(srv protos.ChittyChatService_BroadcastServer) {
-	logger.InfoLogger.Println("Request send to clients")
+func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 	for {
-
 		for {
 
 			time.Sleep(500 * time.Millisecond)
@@ -71,30 +65,27 @@ func (s *Server) sendToClients(srv protos.ChittyChatService_BroadcastServer) {
 				messageHandle.mu.Unlock()
 				break
 			}
-			fmt.Printf("Lamport from message: %d\n", messageHandle.MessageQue[0].Lamport)
 			senderUniqueCode := messageHandle.MessageQue[0].ClientUniqueCode
 			senderName := messageHandle.MessageQue[0].ClientName
-			LamportTimestamp := messageHandle.MessageQue[0].Lamport
 			messageFromServer := messageHandle.MessageQue[0].Msg
 			messageCode := messageHandle.MessageQue[0].MessageCode
 
 			messageHandle.mu.Unlock()
 
-			s.subscribers.Range(func(k, v interface{}) bool {
+			s.buyers.Range(func(k, v interface{}) bool {
 				id, ok := k.(int32)
 				if !ok {
-					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast subscriber key: %T", k))
+					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast buyers key: %T", k))
 					return false
 				}
 				sub, ok := v.(sub)
 				if !ok {
-					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast subscriber value: %T", v))
+					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast buyers value: %T", v))
 					return false
 				}
 				// Send data over the gRPC stream to the client
 				if err := sub.stream.Send(&protos.ChatRoomMessages{
 					Msg:              messageFromServer,
-					LamportTimestamp: LamportTimestamp,
 					Username:         senderName,
 					ClientId:         senderUniqueCode,
 					Code:             messageCode,
@@ -104,7 +95,6 @@ func (s *Server) sendToClients(srv protos.ChittyChatService_BroadcastServer) {
 				}
 				return true
 			})
-			logger.InfoLogger.Println("Brodcasting message success.")
 
 			messageHandle.mu.Lock()
 
@@ -122,27 +112,25 @@ func (s *Server) sendToClients(srv protos.ChittyChatService_BroadcastServer) {
 
 func (s *Server) killSignals() {
 	for _, id := range s.unsubscribe {
-		logger.InfoLogger.Printf("Killed client: %v", id)
+		//logger.InfoLogger.Printf("Killed client: %v", id)
 
 		idd := int32(id)
-		m, ok := s.subscribers.Load(idd)
+		m, ok := s.buyers.Load(idd)
 		if !ok && m != nil {
-			logger.InfoLogger.Println(fmt.Sprintf("Failed to find subscriber value: %T", idd))
+			logger.InfoLogger.Println(fmt.Sprintf("Failed to find buyer value: %T", idd))
 		}
 		sub, ok := m.(sub)
 		if !ok && m != nil {
-			logger.WarningLogger.Panicf("Failed to cast subscriber value: %T", sub)
+			logger.WarningLogger.Panicf("Failed to cast buyer value: %T", sub)
 		}
 		if m != nil {
 			addToMessageQueue(id, 3, sub.name, "")
 		}
-		s.subscribers.Delete(id)
-		Output(fmt.Sprintf("Client: %v disconnected", id))
+		s.buyers.Delete(id)
 	}
 }
 
-func (s *Server) Publish(srv protos.ChittyChatService_PublishServer) error {
-	logger.InfoLogger.Println("Requests publish")
+func (s *Server) Publish(srv protos.AuctionhouseService_PublishServer) error {
 	er := make(chan error)
 
 	go s.receiveFromStream(srv, er)
@@ -151,13 +139,12 @@ func (s *Server) Publish(srv protos.ChittyChatService_PublishServer) error {
 	return <-er
 }
 
-func (s *Server) receiveFromStream(srv protos.ChittyChatService_PublishServer, er_ chan error) {
+func (s *Server) receiveFromStream(srv protos.AuctionhouseService_PublishServer, er_ chan error) {
 
 	//implement a loop
 	for {
 		mssg, err := srv.Recv()
 		if err != nil {
-			logger.InfoLogger.Println(fmt.Sprintf("Error occured when recieving message: %v", err))
 			break
 		}
 		id := mssg.ClientId
@@ -188,7 +175,7 @@ func addToMessageQueue(id, code int32, username, msg string) {
 	messageHandle.mu.Unlock()
 }
 
-func sendToStream(srv protos.ChittyChatService_PublishServer, er_ chan error) {
+func sendToStream(srv protos.AuctionhouseService_PublishServer, er_ chan error) {
 	for {
 		time.Sleep(500 * time.Millisecond)
 
@@ -218,7 +205,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	protos.RegisterChittyChatServiceServer(grpcServer, s)
+	protos.RegisterAuctionhouseServiceServer(grpcServer, s)
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {

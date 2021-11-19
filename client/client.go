@@ -14,24 +14,23 @@ import (
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	//google_protobuf "github.com/golang/protobuf/ptypes/empty"
 )
-
-//google_protobuf "github.com/golang/protobuf/ptypes/empty"
 
 var (
 	checkingStatus bool
 	connected      bool
 	clientName     string
-	ID             int32 // id is the client ID used for subscribing
+	ID             int32 
 )
 
-type ChatClient struct {
-	clientService protos.ChittyChatServiceClient
-	conn          *grpc.ClientConn // conn is the client gRPC connection
+type AuctionClient struct {
+	clientService protos.AuctionhouseServiceClient
+	conn          *grpc.ClientConn 
 }
 
 type clienthandle struct {
-	streamOut protos.ChittyChatService_PublishClient
+	streamOut protos.AuctionhouseService_PublishClient
 }
 
 func main() {
@@ -50,35 +49,33 @@ func main() {
 
 	streamOut, err := client.clientService.Publish(context.Background())
 	if err != nil {
-		logger.ErrorLogger.Fatalf("Failed to call ChatService :: %v", err)
+		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService :: %v", err)
 	}
 
-	// implement communication with gRPC server
-	ch1 := clienthandle{
+	ch := clienthandle{
 		streamOut: streamOut,
 	}
 
 	go client.receiveMessage()
-	go ch1.sendMessage(*client)
-	go ch1.recvStatus()
+	go ch.sendMessage(*client)
+	go ch.recvStatus()
 
 	//blocker
 	bl := make(chan bool)
 	<-bl
 }
 
-func (cc *ChatClient) receiveMessage() {
+func (cc *AuctionClient) receiveMessage() {
 	var err error
-	var stream protos.ChittyChatService_BroadcastClient
+	var stream protos.AuctionhouseService_BroadcastClient
 
 	for {
 		if stream == nil {
 			if stream, err = cc.subscribe(); err != nil {
-				UserInput() // wait for user to close
+				UserInput() 
 				Output("Closing client")
-				logger.ErrorLogger.Fatalf("Failed to subscribe: %v", err)
+				logger.ErrorLogger.Fatalf("Failed to join: %v", err)
 				cc.sleep()
-				// Retry on failure SHould do something more
 				continue
 			}
 		}
@@ -94,52 +91,47 @@ func (cc *ChatClient) receiveMessage() {
 		msgCode := response.Code
 		switch {
 		case msgCode == 1:
-			Output(fmt.Sprintf("Logical Timestamp:, %s joined the server\n", response.Username))
+			Output(fmt.Sprintf("%s joined the auctionhouse\n", response.Username))
 		case msgCode == 2 && response.ClientId != ID:
-			// det går galt her
-			Output(fmt.Sprintf("Logical Timestamp:, %s says: %s \n", response.Username, response.Msg))
+			// Output(fmt.Sprintf(" %s says: %s \n", response.Username, response.Msg))
 		case msgCode == 3:
-			Output(fmt.Sprintf("Logical Timestamp:, %s left the server\n", response.Username))
+			// Output(fmt.Sprintf("Logical Timestamp:, %s left the server\n", response.Username))
 		case msgCode == 4:
-			Output("Logical Timestamp:, server closed. Press ctrl + c to exit.\n")
-
+			// Output("Logical Timestamp:, server closed. Press ctrl + c to exit.\n")
 		}
 	}
 }
 
-func (c *ChatClient) subscribe() (protos.ChittyChatService_BroadcastClient, error) {
-	logger.InfoLogger.Printf("Subscribing client ID: %d", ID)
+func (c *AuctionClient) subscribe() (protos.AuctionhouseService_BroadcastClient, error) {
+	logger.InfoLogger.Printf("Buyers client ID: %d", ID)
 	return c.clientService.Broadcast(context.Background(), &protos.Subscription{
 		ClientId: ID,
 		UserName: clientName,
 	})
 }
 
-func makeClient() (*ChatClient, error) {
+func makeClient() (*AuctionClient, error) {
 	conn, err := makeConnection()
 	if err != nil {
 		return nil, err
 	}
-	return &ChatClient{
-		clientService: protos.NewChittyChatServiceClient(conn),
+	return &AuctionClient{
+		clientService: protos.NewAuctionhouseServiceClient(conn),
 		conn:          conn,
 	}, nil
 }
 
 func makeConnection() (*grpc.ClientConn, error) {
-	logger.InfoLogger.Print("Connecting to server...")
+	logger.InfoLogger.Print("Connecting to the auctionhouse...")
 	return grpc.Dial(":3000", []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
 }
 
 func (ch *clienthandle) recvStatus() {
-	//create a loop
-
 	for !connected {
 		mssg, err := ch.streamOut.Recv()
 		if err != nil {
 			logger.ErrorLogger.Fatalf("Error in receiving message from server :: %v", err)
 		}
-
 		if checkingStatus {
 			Output(fmt.Sprintf("%s : %s \n", mssg.Operation, mssg.Status))
 		}
@@ -147,8 +139,7 @@ func (ch *clienthandle) recvStatus() {
 	}
 }
 
-func (ch *clienthandle) sendMessage(client ChatClient) {
-	// create a loop
+func (ch *clienthandle) sendMessage(client AuctionClient) {
 	for {
 		clientMessage := UserInput()
 
@@ -166,6 +157,7 @@ func (ch *clienthandle) sendMessage(client ChatClient) {
 				logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
 			}
 			UserInput()
+
 			os.Exit(3)
 
 		} else {
@@ -182,20 +174,20 @@ func (ch *clienthandle) sendMessage(client ChatClient) {
 				logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
 			}
 		}
-
 	}
-
 }
 
-func (c *ChatClient) sleep() {
+func (c *AuctionClient) sleep() {
 	time.Sleep(time.Second * 2)
 }
 
 func WelcomeMsg() string {
-	return `>>> WELCOME TO CHITTY CHAT <<<
---------------------------------------------------
-Please enter an username to begin chatting:
-			`
+	return `
+______________________________________________________
+======================================================
+    **>>> WELCOME TO BARBETTES AUCTIONHOUSE <<<**
+======================================================
+Please enter an username to begin:`
 }
 
 func LimitReader(s string) string {
@@ -214,7 +206,7 @@ func LimitReader(s string) string {
 	}
 }
 
-func (s *ChatClient) EnterUsername() {
+func (s *AuctionClient) EnterUsername() {
 	clientName = UserInput()
 	Welcome(clientName)
 	logger.InfoLogger.Printf("User registred: %s", clientName)
@@ -233,7 +225,6 @@ func UserInput() string {
 }
 
 func Welcome(input string) {
-	Output("Welcome to the chat " + input)
 	Output("Type: '-- quit' to exit")
 }
 

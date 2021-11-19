@@ -9,29 +9,25 @@ package proto;
 option go_package = "./proto"; 
 
 
-service ChittyChatService {
+service AuctionhouseService {
   rpc Publish(stream ClientMessage) returns (stream StatusMessage) {}
   rpc Broadcast(Subscription) returns (stream ChatRoomMessages) {}
-  // rpc Connection (Subscription) returns (Subscription);
 }
 
 message Subscription {
   int32 clientId = 1;
   string userName = 2;
-  int32 lamportTimestamp = 3;
 }
 
 message ClientMessage {
   int32 clientId = 1;
   string userName = 2;
   string msg = 3;
-  int32 lamportTimestamp = 4; 
   int32 code = 5;
 }
 
 message ChatRoomMessages {
   string msg = 1;
-  int32 lamportTimestamp = 2; 
   string username = 3;
   int32 clientId = 4;
   int32 code = 5;

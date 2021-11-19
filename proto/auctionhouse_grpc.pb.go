@@ -14,46 +14,46 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// ChittyChatServiceClient is the client API for ChittyChatService service.
+// AuctionhouseServiceClient is the client API for AuctionhouseService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type ChittyChatServiceClient interface {
-	Publish(ctx context.Context, opts ...grpc.CallOption) (ChittyChatService_PublishClient, error)
-	Broadcast(ctx context.Context, in *Subscription, opts ...grpc.CallOption) (ChittyChatService_BroadcastClient, error)
+type AuctionhouseServiceClient interface {
+	Publish(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_PublishClient, error)
+	Broadcast(ctx context.Context, in *Subscription, opts ...grpc.CallOption) (AuctionhouseService_BroadcastClient, error)
 }
 
-type chittyChatServiceClient struct {
+type auctionhouseServiceClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewChittyChatServiceClient(cc grpc.ClientConnInterface) ChittyChatServiceClient {
-	return &chittyChatServiceClient{cc}
+func NewAuctionhouseServiceClient(cc grpc.ClientConnInterface) AuctionhouseServiceClient {
+	return &auctionhouseServiceClient{cc}
 }
 
-func (c *chittyChatServiceClient) Publish(ctx context.Context, opts ...grpc.CallOption) (ChittyChatService_PublishClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChatService_ServiceDesc.Streams[0], "/proto.ChittyChatService/Publish", opts...)
+func (c *auctionhouseServiceClient) Publish(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_PublishClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionhouseService_ServiceDesc.Streams[0], "/proto.AuctionhouseService/Publish", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &chittyChatServicePublishClient{stream}
+	x := &auctionhouseServicePublishClient{stream}
 	return x, nil
 }
 
-type ChittyChatService_PublishClient interface {
+type AuctionhouseService_PublishClient interface {
 	Send(*ClientMessage) error
 	Recv() (*StatusMessage, error)
 	grpc.ClientStream
 }
 
-type chittyChatServicePublishClient struct {
+type auctionhouseServicePublishClient struct {
 	grpc.ClientStream
 }
 
-func (x *chittyChatServicePublishClient) Send(m *ClientMessage) error {
+func (x *auctionhouseServicePublishClient) Send(m *ClientMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *chittyChatServicePublishClient) Recv() (*StatusMessage, error) {
+func (x *auctionhouseServicePublishClient) Recv() (*StatusMessage, error) {
 	m := new(StatusMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -61,12 +61,12 @@ func (x *chittyChatServicePublishClient) Recv() (*StatusMessage, error) {
 	return m, nil
 }
 
-func (c *chittyChatServiceClient) Broadcast(ctx context.Context, in *Subscription, opts ...grpc.CallOption) (ChittyChatService_BroadcastClient, error) {
-	stream, err := c.cc.NewStream(ctx, &ChittyChatService_ServiceDesc.Streams[1], "/proto.ChittyChatService/Broadcast", opts...)
+func (c *auctionhouseServiceClient) Broadcast(ctx context.Context, in *Subscription, opts ...grpc.CallOption) (AuctionhouseService_BroadcastClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionhouseService_ServiceDesc.Streams[1], "/proto.AuctionhouseService/Broadcast", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &chittyChatServiceBroadcastClient{stream}
+	x := &auctionhouseServiceBroadcastClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -76,16 +76,16 @@ func (c *chittyChatServiceClient) Broadcast(ctx context.Context, in *Subscriptio
 	return x, nil
 }
 
-type ChittyChatService_BroadcastClient interface {
+type AuctionhouseService_BroadcastClient interface {
 	Recv() (*ChatRoomMessages, error)
 	grpc.ClientStream
 }
 
-type chittyChatServiceBroadcastClient struct {
+type auctionhouseServiceBroadcastClient struct {
 	grpc.ClientStream
 }
 
-func (x *chittyChatServiceBroadcastClient) Recv() (*ChatRoomMessages, error) {
+func (x *auctionhouseServiceBroadcastClient) Recv() (*ChatRoomMessages, error) {
 	m := new(ChatRoomMessages)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -93,57 +93,57 @@ func (x *chittyChatServiceBroadcastClient) Recv() (*ChatRoomMessages, error) {
 	return m, nil
 }
 
-// ChittyChatServiceServer is the server API for ChittyChatService service.
-// All implementations must embed UnimplementedChittyChatServiceServer
+// AuctionhouseServiceServer is the server API for AuctionhouseService service.
+// All implementations must embed UnimplementedAuctionhouseServiceServer
 // for forward compatibility
-type ChittyChatServiceServer interface {
-	Publish(ChittyChatService_PublishServer) error
-	Broadcast(*Subscription, ChittyChatService_BroadcastServer) error
-	mustEmbedUnimplementedChittyChatServiceServer()
+type AuctionhouseServiceServer interface {
+	Publish(AuctionhouseService_PublishServer) error
+	Broadcast(*Subscription, AuctionhouseService_BroadcastServer) error
+	mustEmbedUnimplementedAuctionhouseServiceServer()
 }
 
-// UnimplementedChittyChatServiceServer must be embedded to have forward compatible implementations.
-type UnimplementedChittyChatServiceServer struct {
+// UnimplementedAuctionhouseServiceServer must be embedded to have forward compatible implementations.
+type UnimplementedAuctionhouseServiceServer struct {
 }
 
-func (UnimplementedChittyChatServiceServer) Publish(ChittyChatService_PublishServer) error {
+func (UnimplementedAuctionhouseServiceServer) Publish(AuctionhouseService_PublishServer) error {
 	return status.Errorf(codes.Unimplemented, "method Publish not implemented")
 }
-func (UnimplementedChittyChatServiceServer) Broadcast(*Subscription, ChittyChatService_BroadcastServer) error {
+func (UnimplementedAuctionhouseServiceServer) Broadcast(*Subscription, AuctionhouseService_BroadcastServer) error {
 	return status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
 }
-func (UnimplementedChittyChatServiceServer) mustEmbedUnimplementedChittyChatServiceServer() {}
+func (UnimplementedAuctionhouseServiceServer) mustEmbedUnimplementedAuctionhouseServiceServer() {}
 
-// UnsafeChittyChatServiceServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to ChittyChatServiceServer will
+// UnsafeAuctionhouseServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to AuctionhouseServiceServer will
 // result in compilation errors.
-type UnsafeChittyChatServiceServer interface {
-	mustEmbedUnimplementedChittyChatServiceServer()
+type UnsafeAuctionhouseServiceServer interface {
+	mustEmbedUnimplementedAuctionhouseServiceServer()
 }
 
-func RegisterChittyChatServiceServer(s grpc.ServiceRegistrar, srv ChittyChatServiceServer) {
-	s.RegisterService(&ChittyChatService_ServiceDesc, srv)
+func RegisterAuctionhouseServiceServer(s grpc.ServiceRegistrar, srv AuctionhouseServiceServer) {
+	s.RegisterService(&AuctionhouseService_ServiceDesc, srv)
 }
 
-func _ChittyChatService_Publish_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(ChittyChatServiceServer).Publish(&chittyChatServicePublishServer{stream})
+func _AuctionhouseService_Publish_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AuctionhouseServiceServer).Publish(&auctionhouseServicePublishServer{stream})
 }
 
-type ChittyChatService_PublishServer interface {
+type AuctionhouseService_PublishServer interface {
 	Send(*StatusMessage) error
 	Recv() (*ClientMessage, error)
 	grpc.ServerStream
 }
 
-type chittyChatServicePublishServer struct {
+type auctionhouseServicePublishServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittyChatServicePublishServer) Send(m *StatusMessage) error {
+func (x *auctionhouseServicePublishServer) Send(m *StatusMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *chittyChatServicePublishServer) Recv() (*ClientMessage, error) {
+func (x *auctionhouseServicePublishServer) Recv() (*ClientMessage, error) {
 	m := new(ClientMessage)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -151,44 +151,44 @@ func (x *chittyChatServicePublishServer) Recv() (*ClientMessage, error) {
 	return m, nil
 }
 
-func _ChittyChatService_Broadcast_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _AuctionhouseService_Broadcast_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(Subscription)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(ChittyChatServiceServer).Broadcast(m, &chittyChatServiceBroadcastServer{stream})
+	return srv.(AuctionhouseServiceServer).Broadcast(m, &auctionhouseServiceBroadcastServer{stream})
 }
 
-type ChittyChatService_BroadcastServer interface {
+type AuctionhouseService_BroadcastServer interface {
 	Send(*ChatRoomMessages) error
 	grpc.ServerStream
 }
 
-type chittyChatServiceBroadcastServer struct {
+type auctionhouseServiceBroadcastServer struct {
 	grpc.ServerStream
 }
 
-func (x *chittyChatServiceBroadcastServer) Send(m *ChatRoomMessages) error {
+func (x *auctionhouseServiceBroadcastServer) Send(m *ChatRoomMessages) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-// ChittyChatService_ServiceDesc is the grpc.ServiceDesc for ChittyChatService service.
+// AuctionhouseService_ServiceDesc is the grpc.ServiceDesc for AuctionhouseService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var ChittyChatService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "proto.ChittyChatService",
-	HandlerType: (*ChittyChatServiceServer)(nil),
+var AuctionhouseService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.AuctionhouseService",
+	HandlerType: (*AuctionhouseServiceServer)(nil),
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "Publish",
-			Handler:       _ChittyChatService_Publish_Handler,
+			Handler:       _AuctionhouseService_Publish_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{
 			StreamName:    "Broadcast",
-			Handler:       _ChittyChatService_Broadcast_Handler,
+			Handler:       _AuctionhouseService_Broadcast_Handler,
 			ServerStreams: true,
 		},
 	},
