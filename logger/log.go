@@ -12,7 +12,9 @@ var (
 	ErrorLogger   *log.Logger
 )
 
-func LogFileInit(typeOf string, id int32) {
+
+// This is a variadic func, the "..." means sthe int32 is optional TGPL-book p. 142
+func LogFileInit(typeOf string, id ...int32) {
     if(typeOf == "main") {
         ClearLog()
 

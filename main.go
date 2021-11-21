@@ -10,7 +10,7 @@ func main() {
 	defer printStack() // The defer makes the program wait for the method to return before terminating TGPL-book p. 143
 
 	logger.ClearLog()
-	logger.LogFileInit("main", 0)
+	logger.LogFileInit("main")
 }
 
 
