@@ -14,16 +14,15 @@ import (
 )
 
 var (
-	serverId    int32
-	port = 3000
+	serverId int32
+	port     = 3000
 )
 
-
 type message struct {
-	ClientUniqueCode int32
-	ClientName       string
-	Msg              string
-	MessageCode      int32
+	auctionStatusMessage string
+	highestBid           int32
+	highestBidderID      int32
+	item                 string
 }
 
 type raw struct {
@@ -33,33 +32,36 @@ type raw struct {
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	buyers      sync.Map
+	auctioneer  sync.Map
 	unsubscribe []int32
 }
 
 type sub struct {
-	stream   protos.AuctionhouseService_BroadcastServer
+	stream   protos.AuctionhouseService_BidServer
 	finished chan<- bool
-	name     string
+	id       int32
 }
 
 var messageHandle = raw{}
 
-func (s *Server) Broadcast(request *protos.Subscription, stream protos.AuctionhouseService_BroadcastServer) error {
+func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 	fin := make(chan bool)
 
-	s.buyers.Store(request.ClientId, sub{stream: stream, finished: fin, name: request.UserName})
+	
 
-	addToMessageQueue(request.ClientId, 1, request.UserName, "")
+	s.auctioneer.Store(request.ClientId, sub{stream: stream, finished: fin, id: request.ClientId})
 
-	go s.sendToClients(stream)
+	//addToMessageQueue(request.ClientId, 1, request.UserName, "")
+
+	//go s.sendToClients(stream)
 
 	bl := make(chan error)
 	return <-bl
 }
 
-func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
+// To be used in results
+func (s *Server) sendToClients(srv protos.AuctionhouseService_BidServer) {
 	for {
 		for {
 
@@ -67,6 +69,8 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 
 			messageHandle.mu.Lock()
 
+			// To be done in results
+			// Check if there is any messages to broadcast
 			if len(messageHandle.MessageQue) == 0 {
 				messageHandle.mu.Unlock()
 				break
@@ -78,7 +82,7 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 
 			messageHandle.mu.Unlock()
 
-			s.buyers.Range(func(k, v interface{}) bool {
+			s.auctioneer.Range(func(k, v interface{}) bool {
 				id, ok := k.(int32)
 				if !ok {
 					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast buyers key: %T", k))
@@ -90,11 +94,8 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 					return false
 				}
 				// Send data over the gRPC stream to the client
-				if err := sub.stream.Send(&protos.ChatRoomMessages{
-					Msg:      messageFromServer,
-					Username: senderName,
-					ClientId: senderUniqueCode,
-					Code:     messageCode,
+				if err := sub.stream.Send(&protos.StatusMessage{
+					Status: protos.Status_SUCCESS,
 				}); err != nil {
 					logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
 					s.unsubscribe = append(s.unsubscribe, id)
@@ -102,6 +103,7 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 				return true
 			})
 
+			// Deletes just broadcasted message
 			messageHandle.mu.Lock()
 
 			if len(messageHandle.MessageQue) > 1 {
@@ -116,12 +118,12 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BroadcastServer) {
 	}
 }
 
-func (s *Server) killSignals() {
+func (s *Server) killAuctioneer() {
 	for _, id := range s.unsubscribe {
 		//logger.InfoLogger.Printf("Killed client: %v", id)
 
 		idd := int32(id)
-		m, ok := s.buyers.Load(idd)
+		m, ok := s.auctioneer.Load(idd)
 		if !ok && m != nil {
 			logger.InfoLogger.Println(fmt.Sprintf("Failed to find buyer value: %T", idd))
 		}
@@ -130,13 +132,13 @@ func (s *Server) killSignals() {
 			logger.WarningLogger.Panicf("Failed to cast buyer value: %T", sub)
 		}
 		if m != nil {
-			addToMessageQueue(id, 3, sub.name, "")
+			addToMessageQueue(id, 3, "client", "") // ændres
 		}
-		s.buyers.Delete(id)
+		s.auctioneer.Delete(id)
 	}
 }
 
-func (s *Server) Publish(srv protos.AuctionhouseService_PublishServer) error {
+func (s *Server) Results(srv protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
 	go s.receiveFromStream(srv, er)
@@ -145,43 +147,43 @@ func (s *Server) Publish(srv protos.AuctionhouseService_PublishServer) error {
 	return <-er
 }
 
-func (s *Server) receiveFromStream(srv protos.AuctionhouseService_PublishServer, er_ chan error) {
+func (s *Server) receiveFromStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 
 	//implement a loop
 	for {
-		mssg, err := srv.Recv()
+		msg, err := srv.Recv()
 		if err != nil {
 			break
 		}
-		id := mssg.ClientId
+		id := msg.ClientId
 
 		switch {
-		case mssg.Code == 2: // disconnecting
+		case msg.Code == 2: // disconnecting
 			s.unsubscribe = append(s.unsubscribe, id)
-			s.killSignals()
-		case mssg.Code == 1: // chatting
-			addToMessageQueue(id, 2, mssg.UserName, mssg.Msg)
+			s.killAuctioneer()
+		case msg.Code == 1: // chatting
+			addToMessageQueue(id, 2, msg.Msg)
 		default:
 		}
 	}
 }
 
-func addToMessageQueue(id, code int32, username, msg string) {
+func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, item string) {
 	messageHandle.mu.Lock()
 
 	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
-		ClientUniqueCode: id,
-		ClientName:       username,
-		Msg:              msg,
-		MessageCode:      code,
+		auctionStatusMessage: auctionStatusMessage,
+		highestBid:           highestBid,
+		highestBidderID:      highestBidderID,
+		item:                 item,
 	})
 
-	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
+	// logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
 
 	messageHandle.mu.Unlock()
 }
 
-func sendToStream(srv protos.AuctionhouseService_PublishServer, er_ chan error) {
+func sendToStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
 		time.Sleep(500 * time.Millisecond)
 
@@ -203,12 +205,10 @@ func main() {
 
 	s := &Server{}
 
-
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
 		logger.InfoLogger.Printf(fmt.Sprintf("FATAL: Connection unable to establish. Failed to listen: %v", err))
 	}
-
 
 	grpcServer := grpc.NewServer()
 

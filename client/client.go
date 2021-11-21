@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,11 +18,9 @@ import (
 )
 
 var (
-	port           = ":3000"
-	checkingStatus bool
-	connected      bool
-	clientName     string
-	ID             int32
+	port       = ":3000"
+	clientName string
+	ID         int32
 )
 
 type AuctionClient struct {
@@ -30,7 +29,8 @@ type AuctionClient struct {
 }
 
 type clienthandle struct {
-	streamOut protos.AuctionhouseService_PublishClient
+	streamBidOut    protos.AuctionhouseService_BidClient
+	streamResultOut protos.AuctionhouseService_ResultClient
 }
 
 func main() {
@@ -41,7 +41,6 @@ func main() {
 
 	logger.LogFileInit("client", ID)
 
-
 	client, err := makeClient()
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
@@ -49,75 +48,100 @@ func main() {
 
 	client.EnterUsername()
 
-	ch := client.setupStream()
+	channelBid := client.setupBidStream()
+	channelResult := client.setupResultStream()
 
-	go client.receiveMessage()
-	go ch.sendMessage(*client)
-	go ch.recvStatus()
+	go channelResult.sendQueryMessage(*client)
+	go channelResult.receiveFromResult()
+
+	// BID
+	go channelBid.sendMessageBid(*client)
+	go channelBid.recvStatus()
 
 	bl := make(chan bool)
 	<-bl
 }
 
-func setup() {
-	rand.Seed(time.Now().UnixNano())
-}
-
-func (client *AuctionClient) setupStream() clienthandle{
-	streamOut, err := client.clientService.Publish(context.Background())
+func (client *AuctionClient) setupBidStream() clienthandle {
+	streamOut, err := client.clientService.Bid(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService :: %v", err)
 	}
 
 	ch := clienthandle{
-		streamOut: streamOut,
+		streamBidOut: streamOut,
 	}
 	return ch
 }
 
-func (cc *AuctionClient) receiveMessage() {
-	var err error
-	var stream protos.AuctionhouseService_BroadcastClient
+func (client *AuctionClient) setupResultStream() clienthandle {
+	streamOut, err := client.clientService.Result(context.Background())
+	if err != nil {
+		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService :: %v", err)
+	}
 
+	ch := clienthandle{
+		streamResultOut: streamOut,
+	}
+	return ch
+}
+
+// Result
+func (ch *clienthandle) sendQueryMessage(client AuctionClient) {
 	for {
-		if stream == nil {
-			if stream, err = cc.subscribe(); err != nil {
-				UserInput()
-				Output("Closing client")
-				logger.ErrorLogger.Fatalf("Failed to join: %v", err)
-				cc.sleep()
-				continue
-			}
-		}
-		response, err := stream.Recv()
 
+		queryMessage := &protos.QueryMessage{
+			ClientId: ID,
+		}
+
+		err := ch.streamResultOut.Send(queryMessage)
 		if err != nil {
-			logger.WarningLogger.Printf("Failed to receive message: %v", err)
-			stream = nil
-			cc.sleep()
-			continue
-		}
-
-		msgCode := response.Code
-		switch {
-		case msgCode == 1:
-			Output(fmt.Sprintf("%s joined the auctionhouse\n", response.Username))
-		case msgCode == 2 && response.ClientId != ID:
-			// Output(fmt.Sprintf(" %s says: %s \n", response.Username, response.Msg))
-		case msgCode == 3:
-			// Output(fmt.Sprintf("Logical Timestamp:, %s left the server\n", response.Username))
-		case msgCode == 4:
-			// Output("Logical Timestamp:, server closed. Press ctrl + c to exit.\n")
+			logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
 		}
 	}
 }
 
-func (c *AuctionClient) subscribe() (protos.AuctionhouseService_BroadcastClient, error) {
-	logger.InfoLogger.Printf("Buyers client ID: %d", ID)
-	return c.clientService.Broadcast(context.Background(), &protos.Subscription{
-		ClientId: ID,
-		UserName: clientName,
-	})
+func (ch *clienthandle) receiveFromResult() {
+	for {
+		response, err := ch.streamResultOut.Recv()
+		if err != nil {
+			logger.WarningLogger.Printf("Failed to receive message: %v", err)
+		}
+
+		Output(fmt.Sprintf("Highest bid: %v", response.HighestBid)) // selvføli det ska.. der ska mere her ik
+
+		/* 	string auctionStatusMessage = 1;
+		int32 highestBid = 2;
+		int32 highestBidderID = 3;
+		string item = 4; */
+	}
+}
+
+// BID
+func (ch *clienthandle) sendMessageBid(client AuctionClient) {
+	for {
+		amount, _ := strconv.Atoi(UserInput())
+
+		clientMessageBox := &protos.BidMessage{
+			ClientId: ID,
+			Amount:   int32(amount),
+		}
+
+		err := ch.streamBidOut.Send(clientMessageBox)
+		if err != nil {
+			logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
+		}
+	}
+}
+
+func (ch *clienthandle) recvStatus() {
+	for {
+		msg, err := ch.streamBidOut.Recv()
+		if err != nil {
+			logger.InfoLogger.Printf("Error in receiving message from server :: %v", msg)
+			Output("Server recieved bid!") //Maybe says more things!
+		}
+	}
 }
 
 func makeClient() (*AuctionClient, error) {
@@ -134,61 +158,6 @@ func makeClient() (*AuctionClient, error) {
 func makeConnection() (*grpc.ClientConn, error) {
 	logger.InfoLogger.Print("Connecting to the auctionhouse...")
 	return grpc.Dial(port, []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
-}
-
-func (ch *clienthandle) recvStatus() {
-	for !connected {
-		mssg, err := ch.streamOut.Recv()
-		if err != nil {
-			logger.ErrorLogger.Fatalf("Error in receiving message from server :: %v", err)
-		}
-		if checkingStatus {
-			Output(fmt.Sprintf("%s : %s \n", mssg.Operation, mssg.Status))
-		}
-		connected = true
-	}
-}
-
-func (ch *clienthandle) sendMessage(client AuctionClient) {
-	for {
-		clientMessage := UserInput()
-
-		if strings.Contains(clientMessage, "-- quit") {
-			Output("Logical Timestamp:%d, connection to server closed. Press any key to exit.\n")
-			clientMessageBox := &protos.ClientMessage{
-				ClientId: ID,
-				UserName: clientName,
-				Msg:      "",
-				Code:     2,
-			}
-
-			err := ch.streamOut.Send(clientMessageBox)
-			if err != nil {
-				logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
-			}
-			UserInput()
-
-			os.Exit(3)
-
-		} else {
-
-			clientMessageBox := &protos.ClientMessage{
-				ClientId: ID,
-				UserName: clientName,
-				Msg:      clientMessage,
-				Code:     1,
-			}
-
-			err := ch.streamOut.Send(clientMessageBox)
-			if err != nil {
-				logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
-			}
-		}
-	}
-}
-
-func (c *AuctionClient) sleep() {
-	time.Sleep(time.Second * 2)
 }
 
 func WelcomeMsg() string {
@@ -228,4 +197,8 @@ func FormatToChat(user, msg string, timestamp int32) string {
 
 func Output(input string) {
 	fmt.Println(input)
+}
+
+func setup() {
+	rand.Seed(time.Now().UnixNano())
 }

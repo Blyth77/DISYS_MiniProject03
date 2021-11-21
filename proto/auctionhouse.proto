@@ -10,38 +10,42 @@ option go_package = "./proto";
 
 
 service AuctionhouseService {
-  rpc Publish(stream ClientMessage) returns (stream StatusMessage) {}
-  rpc Broadcast(Subscription) returns (stream ChatRoomMessages) {}
+  rpc Result(stream QueryMessage) returns (stream OutcomeMessage) {} // publish sender en besked fra client // unary
+  rpc Bid(stream BidMessage) returns (stream StatusMessage) {} // Broadcast -- subcribe - server -> client via msgQueue
 }
 
-message Subscription {
+// ack =  given a bid, returns an outcome among fail, success or exception
+
+
+// Send a new bid + subscribing
+message BidMessage {
   int32 clientId = 1;
-  string userName = 2;
+  int32 amount = 2;
 }
 
-message ClientMessage {
+
+// Highest bidder info - highest bid, and bidder 
+message OutcomeMessage {
+  string auctionStatusMessage = 1;
+  int32 highestBid = 2; 
+  int32 highestBidderID = 3;
+  string item = 4;
+}
+
+// Message for prompting asking for highest bidder
+message QueryMessage {
   int32 clientId = 1;
-  string userName = 2;
-  string msg = 3;
-  int32 code = 5;
+
 }
 
-message ChatRoomMessages {
-  string msg = 1;
-  string username = 3;
-  int32 clientId = 4;
-  int32 code = 5;
-}
-
+// Was bid successful? 
 message StatusMessage {
-  string operation = 1;
-  Status status = 2;
+  Status status = 1; 
 }
 
 enum Status {
-  INVALID = 0;
-  SUCCESS = 1;
-  FAILURE = 2;
+  SUCCESS = 0;
+  FAIL = 1;
+  EXCEPTION = 2;
 }
-
 

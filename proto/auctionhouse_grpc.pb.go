@@ -18,8 +18,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionhouseServiceClient interface {
-	Publish(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_PublishClient, error)
-	Broadcast(ctx context.Context, in *Subscription, opts ...grpc.CallOption) (AuctionhouseService_BroadcastClient, error)
+	Result(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_ResultClient, error)
+	Bid(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_BidClient, error)
 }
 
 type auctionhouseServiceClient struct {
@@ -30,63 +30,62 @@ func NewAuctionhouseServiceClient(cc grpc.ClientConnInterface) AuctionhouseServi
 	return &auctionhouseServiceClient{cc}
 }
 
-func (c *auctionhouseServiceClient) Publish(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_PublishClient, error) {
-	stream, err := c.cc.NewStream(ctx, &AuctionhouseService_ServiceDesc.Streams[0], "/proto.AuctionhouseService/Publish", opts...)
+func (c *auctionhouseServiceClient) Result(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_ResultClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionhouseService_ServiceDesc.Streams[0], "/proto.AuctionhouseService/Result", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &auctionhouseServicePublishClient{stream}
+	x := &auctionhouseServiceResultClient{stream}
 	return x, nil
 }
 
-type AuctionhouseService_PublishClient interface {
-	Send(*ClientMessage) error
-	Recv() (*StatusMessage, error)
+type AuctionhouseService_ResultClient interface {
+	Send(*QueryMessage) error
+	Recv() (*OutcomeMessage, error)
 	grpc.ClientStream
 }
 
-type auctionhouseServicePublishClient struct {
+type auctionhouseServiceResultClient struct {
 	grpc.ClientStream
 }
 
-func (x *auctionhouseServicePublishClient) Send(m *ClientMessage) error {
+func (x *auctionhouseServiceResultClient) Send(m *QueryMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *auctionhouseServicePublishClient) Recv() (*StatusMessage, error) {
-	m := new(StatusMessage)
+func (x *auctionhouseServiceResultClient) Recv() (*OutcomeMessage, error) {
+	m := new(OutcomeMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *auctionhouseServiceClient) Broadcast(ctx context.Context, in *Subscription, opts ...grpc.CallOption) (AuctionhouseService_BroadcastClient, error) {
-	stream, err := c.cc.NewStream(ctx, &AuctionhouseService_ServiceDesc.Streams[1], "/proto.AuctionhouseService/Broadcast", opts...)
+func (c *auctionhouseServiceClient) Bid(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_BidClient, error) {
+	stream, err := c.cc.NewStream(ctx, &AuctionhouseService_ServiceDesc.Streams[1], "/proto.AuctionhouseService/Bid", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &auctionhouseServiceBroadcastClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
+	x := &auctionhouseServiceBidClient{stream}
 	return x, nil
 }
 
-type AuctionhouseService_BroadcastClient interface {
-	Recv() (*ChatRoomMessages, error)
+type AuctionhouseService_BidClient interface {
+	Send(*BidMessage) error
+	Recv() (*StatusMessage, error)
 	grpc.ClientStream
 }
 
-type auctionhouseServiceBroadcastClient struct {
+type auctionhouseServiceBidClient struct {
 	grpc.ClientStream
 }
 
-func (x *auctionhouseServiceBroadcastClient) Recv() (*ChatRoomMessages, error) {
-	m := new(ChatRoomMessages)
+func (x *auctionhouseServiceBidClient) Send(m *BidMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *auctionhouseServiceBidClient) Recv() (*StatusMessage, error) {
+	m := new(StatusMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -97,8 +96,8 @@ func (x *auctionhouseServiceBroadcastClient) Recv() (*ChatRoomMessages, error) {
 // All implementations must embed UnimplementedAuctionhouseServiceServer
 // for forward compatibility
 type AuctionhouseServiceServer interface {
-	Publish(AuctionhouseService_PublishServer) error
-	Broadcast(*Subscription, AuctionhouseService_BroadcastServer) error
+	Result(AuctionhouseService_ResultServer) error
+	Bid(AuctionhouseService_BidServer) error
 	mustEmbedUnimplementedAuctionhouseServiceServer()
 }
 
@@ -106,11 +105,11 @@ type AuctionhouseServiceServer interface {
 type UnimplementedAuctionhouseServiceServer struct {
 }
 
-func (UnimplementedAuctionhouseServiceServer) Publish(AuctionhouseService_PublishServer) error {
-	return status.Errorf(codes.Unimplemented, "method Publish not implemented")
+func (UnimplementedAuctionhouseServiceServer) Result(AuctionhouseService_ResultServer) error {
+	return status.Errorf(codes.Unimplemented, "method Result not implemented")
 }
-func (UnimplementedAuctionhouseServiceServer) Broadcast(*Subscription, AuctionhouseService_BroadcastServer) error {
-	return status.Errorf(codes.Unimplemented, "method Broadcast not implemented")
+func (UnimplementedAuctionhouseServiceServer) Bid(AuctionhouseService_BidServer) error {
+	return status.Errorf(codes.Unimplemented, "method Bid not implemented")
 }
 func (UnimplementedAuctionhouseServiceServer) mustEmbedUnimplementedAuctionhouseServiceServer() {}
 
@@ -125,51 +124,56 @@ func RegisterAuctionhouseServiceServer(s grpc.ServiceRegistrar, srv Auctionhouse
 	s.RegisterService(&AuctionhouseService_ServiceDesc, srv)
 }
 
-func _AuctionhouseService_Publish_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(AuctionhouseServiceServer).Publish(&auctionhouseServicePublishServer{stream})
+func _AuctionhouseService_Result_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AuctionhouseServiceServer).Result(&auctionhouseServiceResultServer{stream})
 }
 
-type AuctionhouseService_PublishServer interface {
-	Send(*StatusMessage) error
-	Recv() (*ClientMessage, error)
+type AuctionhouseService_ResultServer interface {
+	Send(*OutcomeMessage) error
+	Recv() (*QueryMessage, error)
 	grpc.ServerStream
 }
 
-type auctionhouseServicePublishServer struct {
+type auctionhouseServiceResultServer struct {
 	grpc.ServerStream
 }
 
-func (x *auctionhouseServicePublishServer) Send(m *StatusMessage) error {
+func (x *auctionhouseServiceResultServer) Send(m *OutcomeMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *auctionhouseServicePublishServer) Recv() (*ClientMessage, error) {
-	m := new(ClientMessage)
+func (x *auctionhouseServiceResultServer) Recv() (*QueryMessage, error) {
+	m := new(QueryMessage)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func _AuctionhouseService_Broadcast_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(Subscription)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(AuctionhouseServiceServer).Broadcast(m, &auctionhouseServiceBroadcastServer{stream})
+func _AuctionhouseService_Bid_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AuctionhouseServiceServer).Bid(&auctionhouseServiceBidServer{stream})
 }
 
-type AuctionhouseService_BroadcastServer interface {
-	Send(*ChatRoomMessages) error
+type AuctionhouseService_BidServer interface {
+	Send(*StatusMessage) error
+	Recv() (*BidMessage, error)
 	grpc.ServerStream
 }
 
-type auctionhouseServiceBroadcastServer struct {
+type auctionhouseServiceBidServer struct {
 	grpc.ServerStream
 }
 
-func (x *auctionhouseServiceBroadcastServer) Send(m *ChatRoomMessages) error {
+func (x *auctionhouseServiceBidServer) Send(m *StatusMessage) error {
 	return x.ServerStream.SendMsg(m)
+}
+
+func (x *auctionhouseServiceBidServer) Recv() (*BidMessage, error) {
+	m := new(BidMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // AuctionhouseService_ServiceDesc is the grpc.ServiceDesc for AuctionhouseService service.
@@ -181,15 +185,16 @@ var AuctionhouseService_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Publish",
-			Handler:       _AuctionhouseService_Publish_Handler,
+			StreamName:    "Result",
+			Handler:       _AuctionhouseService_Result_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},
 		{
-			StreamName:    "Broadcast",
-			Handler:       _AuctionhouseService_Broadcast_Handler,
+			StreamName:    "Bid",
+			Handler:       _AuctionhouseService_Bid_Handler,
 			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "auctionhouse.proto",
