@@ -44,7 +44,7 @@ type sub struct {
 
 var messageHandle = raw{}
 
-// Bid is called upon a server obj and takes a AHService_Bidserver bc [....] .
+// Bid is called upon a server struct and takes a AHService_Bidserver bc [....] .
 // The server obj stores the highest bid.
 // Client sends a bid msg (id, amount).
 // first call to bid is to register - other calls places bid higher than the previous.
@@ -52,18 +52,18 @@ var messageHandle = raw{}
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 	//fin := make(chan bool)
-
+	// needs a go routine
 	var bid, err = stream.Recv()
 	if err != nil {
 		return err
 	}
-
+	// out in its own go routine:
 	c, ok := s.auctioneer.Load(bid.ClientId)
 	if !ok {
 		s.auctioneer.Store(bid.ClientId, bid.Amount)
 		logger.InfoLogger.Printf("Storing new client %v, in server map", bid.ClientId)
 	}
-
+	//Handle new bid - 
 	if bid.Amount > c.(int32) {
 		s.auctioneer.Store(bid.ClientId, bid.Amount)
 		logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
@@ -79,7 +79,7 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 // To be used in results.
 // Sends(/Bodcast) msg to all clients
-func (s *Server) sendToClients(srv protos.AuctionhouseService_ResultServer) {
+func (s *Server) sendResultToAll(srv protos.AuctionhouseService_ResultServer) {
 	for {
 		for {
 
@@ -168,15 +168,16 @@ func (s *Server) killAuctioneer() {
 func (s *Server) Results(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
-	go s.receiveFromStream(stream, er)
-	go sendToStream(stream, er)
-	go s.sendToClients(stream)
+	go s.receiveQueryForResult(stream, er)
+	//go sendToStream(stream, er) // back to bid
+	go s.sendResultToAll(stream)
+	// send to one client missing
 
 	return <-er
 }
 
-//
-func (s *Server) receiveFromStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
+// wait for a client to ask for the highest bidder -- needs a send to one client method
+func (s *Server) receiveQueryForResult(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
 		msg, err := srv.Recv()
 		if err != nil {
@@ -213,8 +214,8 @@ func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, 
 	messageHandle.mu.Unlock()
 }
 
-//
-func sendToStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
+// outcommented if parts are needed later on
+/* func sendToStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
 		time.Sleep(500 * time.Millisecond)
 
@@ -229,7 +230,7 @@ func sendToStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 		}
 	}
 }
-
+ */
 func main() {
 	serverId = 1
 	logger.LogFileInit("server", serverId)
