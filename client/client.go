@@ -52,12 +52,12 @@ func main() {
 	channelResult := client.setupResultStream()
 
 	//Query result
-	go channelResult.sendQueryMessage(*client)
+	go channelResult.sendQueryResult(*client)
 	go channelResult.receiveFromResult()
 
 	// BID
 	go channelBid.sendMessageBid(*client)
-	go channelBid.recvStatus()
+	go channelBid.recvBidStatus()
 
 	bl := make(chan bool)
 	<-bl
@@ -89,14 +89,14 @@ func (client *AuctionClient) setupResultStream() clienthandle {
 
 // Ask server (by sending query msg w. client id) to send result msg (includes: auctionStatusMessage, highest bid,
 // id of the client w. the highest bid and the item for which they are bidding on)
-func (ch *clienthandle) sendQueryMessage(client AuctionClient) {
+func (ch *clienthandle) sendQueryResult(client AuctionClient) {
 	for {
 
-		queryMessage := &protos.QueryMessage{
+		queryResult := &protos.QueryResult{
 			ClientId: ID,
 		}
 
-		err := ch.streamResultOut.Send(queryMessage)
+		err := ch.streamResultOut.Send(queryResult)
 		if err != nil {
 			logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
 		}
@@ -126,7 +126,7 @@ func (ch *clienthandle) sendMessageBid(client AuctionClient) {
 	for {
 		amount, _ := strconv.Atoi(UserInput())
 
-		clientMessageBox := &protos.BidMessage{
+		clientMessageBox := &protos.BidRequest{
 			ClientId: ID,
 			Amount:   int32(amount),
 		}
@@ -142,7 +142,7 @@ func (ch *clienthandle) sendMessageBid(client AuctionClient) {
 }
 
 // When client has sent a bid request - recieves a status message: success, fail or expection
-func (ch *clienthandle) recvStatus() {
+func (ch *clienthandle) recvBidStatus() {
 	for {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {

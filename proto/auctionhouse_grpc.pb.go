@@ -18,7 +18,12 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionhouseServiceClient interface {
+	// result: send stream of qmgs bc client can ask at any point of time
+	// what the highest bid in the round is.
+	//prints winner when time runs out to all clients.
 	Result(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_ResultClient, error)
+	// First call to Bid registers the auctioners
+	// Bidders can bid several times, but a bid must be higher than the previous one(s)
 	Bid(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_BidClient, error)
 }
 
@@ -40,8 +45,8 @@ func (c *auctionhouseServiceClient) Result(ctx context.Context, opts ...grpc.Cal
 }
 
 type AuctionhouseService_ResultClient interface {
-	Send(*QueryMessage) error
-	Recv() (*OutcomeMessage, error)
+	Send(*QueryResult) error
+	Recv() (*ResponseToQuery, error)
 	grpc.ClientStream
 }
 
@@ -49,12 +54,12 @@ type auctionhouseServiceResultClient struct {
 	grpc.ClientStream
 }
 
-func (x *auctionhouseServiceResultClient) Send(m *QueryMessage) error {
+func (x *auctionhouseServiceResultClient) Send(m *QueryResult) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *auctionhouseServiceResultClient) Recv() (*OutcomeMessage, error) {
-	m := new(OutcomeMessage)
+func (x *auctionhouseServiceResultClient) Recv() (*ResponseToQuery, error) {
+	m := new(ResponseToQuery)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -71,8 +76,8 @@ func (c *auctionhouseServiceClient) Bid(ctx context.Context, opts ...grpc.CallOp
 }
 
 type AuctionhouseService_BidClient interface {
-	Send(*BidMessage) error
-	Recv() (*StatusMessage, error)
+	Send(*BidRequest) error
+	Recv() (*StatusOfBid, error)
 	grpc.ClientStream
 }
 
@@ -80,12 +85,12 @@ type auctionhouseServiceBidClient struct {
 	grpc.ClientStream
 }
 
-func (x *auctionhouseServiceBidClient) Send(m *BidMessage) error {
+func (x *auctionhouseServiceBidClient) Send(m *BidRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *auctionhouseServiceBidClient) Recv() (*StatusMessage, error) {
-	m := new(StatusMessage)
+func (x *auctionhouseServiceBidClient) Recv() (*StatusOfBid, error) {
+	m := new(StatusOfBid)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -96,7 +101,12 @@ func (x *auctionhouseServiceBidClient) Recv() (*StatusMessage, error) {
 // All implementations must embed UnimplementedAuctionhouseServiceServer
 // for forward compatibility
 type AuctionhouseServiceServer interface {
+	// result: send stream of qmgs bc client can ask at any point of time
+	// what the highest bid in the round is.
+	//prints winner when time runs out to all clients.
 	Result(AuctionhouseService_ResultServer) error
+	// First call to Bid registers the auctioners
+	// Bidders can bid several times, but a bid must be higher than the previous one(s)
 	Bid(AuctionhouseService_BidServer) error
 	mustEmbedUnimplementedAuctionhouseServiceServer()
 }
@@ -129,8 +139,8 @@ func _AuctionhouseService_Result_Handler(srv interface{}, stream grpc.ServerStre
 }
 
 type AuctionhouseService_ResultServer interface {
-	Send(*OutcomeMessage) error
-	Recv() (*QueryMessage, error)
+	Send(*ResponseToQuery) error
+	Recv() (*QueryResult, error)
 	grpc.ServerStream
 }
 
@@ -138,12 +148,12 @@ type auctionhouseServiceResultServer struct {
 	grpc.ServerStream
 }
 
-func (x *auctionhouseServiceResultServer) Send(m *OutcomeMessage) error {
+func (x *auctionhouseServiceResultServer) Send(m *ResponseToQuery) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *auctionhouseServiceResultServer) Recv() (*QueryMessage, error) {
-	m := new(QueryMessage)
+func (x *auctionhouseServiceResultServer) Recv() (*QueryResult, error) {
+	m := new(QueryResult)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -155,8 +165,8 @@ func _AuctionhouseService_Bid_Handler(srv interface{}, stream grpc.ServerStream)
 }
 
 type AuctionhouseService_BidServer interface {
-	Send(*StatusMessage) error
-	Recv() (*BidMessage, error)
+	Send(*StatusOfBid) error
+	Recv() (*BidRequest, error)
 	grpc.ServerStream
 }
 
@@ -164,12 +174,12 @@ type auctionhouseServiceBidServer struct {
 	grpc.ServerStream
 }
 
-func (x *auctionhouseServiceBidServer) Send(m *StatusMessage) error {
+func (x *auctionhouseServiceBidServer) Send(m *StatusOfBid) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *auctionhouseServiceBidServer) Recv() (*BidMessage, error) {
-	m := new(BidMessage)
+func (x *auctionhouseServiceBidServer) Recv() (*BidRequest, error) {
+	m := new(BidRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}

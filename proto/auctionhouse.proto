@@ -1,6 +1,6 @@
 /* 
   Generate-files:
-    protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative ChittyChat.proto
+    protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative auctionhouse.proto
 */
 
 syntax = "proto3";
@@ -13,25 +13,25 @@ service AuctionhouseService {
   // result: send stream of qmgs bc client can ask at any point of time
   // what the highest bid in the round is.
   //prints winner when time runs out to all clients.
-  rpc Result(stream QueryMessage) returns (stream OutcomeMessage) {}
+  rpc Result(stream QueryResult) returns (stream ResponseToQuery) {}
 
   // First call to Bid registers the auctioners
   // Bidders can bid several times, but a bid must be higher than the previous one(s)
-  rpc Bid(stream BidMessage) returns (stream StatusMessage) {} // Broadcast -- subcribe - server -> client via msgQueue
+  rpc Bid(stream BidRequest) returns (stream StatusOfBid) {} // Broadcast -- subcribe - server -> client via msgQueue
 }
 
 // ack =  given a bid, returns an outcome among fail, success or exception
 
 
 // Send a new bid + subscribing
-message BidMessage {
+message BidRequest {
   int32 clientId = 1;
   int32 amount = 2;
 }
 
 
 // Highest bidder info - highest bid, and bidder 
-message OutcomeMessage {
+message ResponseToQuery {
   string auctionStatusMessage = 1;
   int32 highestBid = 2; 
   int32 highestBidderID = 3;
@@ -39,19 +39,19 @@ message OutcomeMessage {
 }
 
 // Message for prompting asking for highest bidder
-message QueryMessage {
+message QueryResult {
   int32 clientId = 1;
 
 }
 
 // Was bid successful? 
-message StatusMessage {
+message StatusOfBid {
   Status status = 1; 
 }
 
 enum Status {
-  SUCCESS = 0;
-  FAIL = 1;
+  NOWHIGHESTBIDDER = 0;
+  TOOLOWBID = 1;
   EXCEPTION = 2;
 }
 

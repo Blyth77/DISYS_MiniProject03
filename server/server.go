@@ -76,6 +76,13 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	bl := make(chan error)
 	return <-bl
 }
+// go routine: handles bid: modtager bid, og håndtere om den er ny - bagefter checker den
+// om det nye bid er det højeste af alle bids
+// burde have en highest client struct (sub) med det højeste bid?
+/* func (s *Server) HandleNewBidForClient(srv protos.AuctionhouseService_BidServer) {
+
+} */
+/* func (s *Server) SendBidStatusToClient () */
 
 // To be used in results.
 // Sends(/Bodcast) msg to all clients
@@ -176,7 +183,7 @@ func (s *Server) Results(stream protos.AuctionhouseService_ResultServer) error {
 	return <-er
 }
 
-// wait for a client to ask for the highest bidder -- needs a send to one client method
+// wait for a client to ask for the highest bidder
 func (s *Server) receiveQueryForResult(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
 		msg, err := srv.Recv()
@@ -197,6 +204,8 @@ func (s *Server) receiveQueryForResult(srv protos.AuctionhouseService_ResultServ
 		}
 	}
 }
+// sends result to one client only (the one who queried it)
+/* func (s *Server) sendResultToOneClient(){} */
 
 //Add a msg to a queue for processing all messages
 func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, item string) {
