@@ -14,8 +14,9 @@ import (
 )
 
 var (
-	serverId int32
-	port     = 3000
+	serverId             int32
+	port                 = 3000
+	currentHighestBidder = highestBidder{}
 )
 
 type message struct {
@@ -37,9 +38,16 @@ type Server struct {
 }
 
 type sub struct {
-	stream   protos.AuctionhouseService_ResultServer
-	finished chan<- bool
-	id       int32
+	streamBid    protos.AuctionhouseService_BidServer
+	streamResult protos.AuctionhouseService_ResultServer
+	finished     chan<- bool
+	amount       int32
+}
+
+type highestBidder struct {
+	highestBidAmount int32
+	highestBidderID  int32
+	stream           protos.AuctionhouseService_ResultServer
 }
 
 var messageHandle = raw{}
@@ -51,7 +59,7 @@ var messageHandle = raw{}
 // check if the
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
-	//fin := make(chan bool)
+	fin := make(chan bool)
 	// needs a go routine
 	var bid, err = stream.Recv()
 	if err != nil {
@@ -60,10 +68,10 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	// out in its own go routine:
 	c, ok := s.auctioneer.Load(bid.ClientId)
 	if !ok {
-		s.auctioneer.Store(bid.ClientId, bid.Amount)
+		s.auctioneer.Store(bid.ClientId, sub{streamBid: stream, finished: fin, amount: bid.Amount})
 		logger.InfoLogger.Printf("Storing new client %v, in server map", bid.ClientId)
 	}
-	//Handle new bid - 
+	//Handle new bid -
 	if bid.Amount > c.(int32) {
 		s.auctioneer.Store(bid.ClientId, bid.Amount)
 		logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
@@ -71,11 +79,11 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 	//s.auctioneer.Store(request.ClientId, sub{stream: stream, finished: fin, id: request.ClientId})
 	//addToMessageQueue(request.ClientId, 1, request.UserName, "")
-	
 
 	bl := make(chan error)
 	return <-bl
 }
+
 // go routine: handles bid: modtager bid, og håndtere om den er ny - bagefter checker den
 // om det nye bid er det højeste af alle bids
 // burde have en highest client struct (sub) med det højeste bid?
@@ -86,6 +94,7 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 // To be used in results.
 // Sends(/Bodcast) msg to all clients
+// LAVE METODE OM
 func (s *Server) sendResultToAll(srv protos.AuctionhouseService_ResultServer) {
 	for {
 		for {
@@ -100,8 +109,7 @@ func (s *Server) sendResultToAll(srv protos.AuctionhouseService_ResultServer) {
 				messageHandle.mu.Unlock()
 				break
 			}
-			
-			
+
 			auctionStatusMessage := messageHandle.MessageQue[0].auctionStatusMessage
 			highestBid := messageHandle.MessageQue[0].highestBid
 			highestBidderID := messageHandle.MessageQue[0].highestBidderID
@@ -112,21 +120,20 @@ func (s *Server) sendResultToAll(srv protos.AuctionhouseService_ResultServer) {
 			s.auctioneer.Range(func(k, v interface{}) bool {
 				id, ok := k.(int32)
 				if !ok {
-					return false
 					logger.ErrorLogger.Println(fmt.Sprintf("Failed to cast auctioneer id: %T", k))
+					return false
 				}
 				sub, ok := v.(sub)
 				if !ok {
-					return false
 					logger.ErrorLogger.Println(fmt.Sprintf("Failed to cast auctioneer id: %T to sub", v))
+					return false
 				}
 				// Send data over the gRPC stream to the client
-				if err := sub.stream.Send(&protos.OutcomeMessage{
+				if err := sub.streamResult.Send(&protos.ResponseToQuery{
 					AuctionStatusMessage: auctionStatusMessage,
-					HighestBid: highestBid,
-					HighestBidderID: highestBidderID,
-					Item: item,
-
+					HighestBid:           highestBid,
+					HighestBidderID:      highestBidderID,
+					Item:                 item,
 				}); err != nil {
 					s.unsubscribe = append(s.unsubscribe, id)
 					logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
@@ -171,11 +178,11 @@ func (s *Server) killAuctioneer() {
 	}
 }
 
-// 
+//
 func (s *Server) Results(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
-	go s.receiveQueryForResult(stream, er)
+	go s.receiveQueryForResultAndSendToClient(stream, er)
 	//go sendToStream(stream, er) // back to bid
 	go s.sendResultToAll(stream)
 	// send to one client missing
@@ -184,26 +191,22 @@ func (s *Server) Results(stream protos.AuctionhouseService_ResultServer) error {
 }
 
 // wait for a client to ask for the highest bidder
-func (s *Server) receiveQueryForResult(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
+func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
-		msg, err := srv.Recv()
+		_, err := srv.Recv()
 		if err != nil {
 			break
 		}
-		id := msg.ClientId
-		// how to add to queue?
-		addToMessageQueue(id, msg.)
-		// query message does not have Code fields?
-		switch {
-		case msg.Code == 2: // disconnecting
-			s.unsubscribe = append(s.unsubscribe, id)
-			s.killAuctioneer()
-		case msg.Code == 1: // chatting
-			addToMessageQueue(id, 2, msg.Msg)
-		default:
+		queryResponse := &protos.ResponseToQuery{
+			AuctionStatusMessage: "",
+			HighestBid:           currentHighestBidder.highestBidAmount,
+			HighestBidderID:      currentHighestBidder.highestBidderID,
+			Item:                 "",
 		}
+		srv.Send(queryResponse)
 	}
 }
+
 // sends result to one client only (the one who queried it)
 /* func (s *Server) sendResultToOneClient(){} */
 
@@ -239,7 +242,7 @@ func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, 
 		}
 	}
 }
- */
+*/
 func main() {
 	serverId = 1
 	logger.LogFileInit("server", serverId)
