@@ -56,7 +56,7 @@ func main() {
 	go channelResult.receiveFromResult()
 
 	// BID
-	go channelBid.sendMessageBid(*client)
+	go channelBid.sendBidRequest(*client)
 	go channelBid.recvBidStatus()
 
 	bl := make(chan bool)
@@ -122,7 +122,7 @@ func (ch *clienthandle) receiveFromResult() {
 }
 
 // Client send bid request incl. userinput: amount
-func (ch *clienthandle) sendMessageBid(client AuctionClient) {
+func (ch *clienthandle) sendBidRequest(client AuctionClient) {
 	for {
 		amount, _ := strconv.Atoi(UserInput())
 

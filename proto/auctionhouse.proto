@@ -8,7 +8,6 @@ package proto;
 
 option go_package = "./proto"; 
 
-
 service AuctionhouseService {
   // result: send stream of qmgs bc client can ask at any point of time
   // what the highest bid in the round is.
@@ -50,8 +49,8 @@ message StatusOfBid {
 }
 
 enum Status {
-  NOWHIGHESTBIDDER = 0;
-  TOOLOWBID = 1;
+  NOW_HIGHEST_BIDDER = 0;
+  TOO_LOW_BID = 1;
   EXCEPTION = 2;
 }
 
