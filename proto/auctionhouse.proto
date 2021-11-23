@@ -10,7 +10,13 @@ option go_package = "./proto";
 
 
 service AuctionhouseService {
-  rpc Result(stream QueryMessage) returns (stream OutcomeMessage) {} // publish sender en besked fra client // unary
+  // result: send stream of qmgs bc client can ask at any point of time
+  // what the highest bid in the round is.
+  //prints winner when time runs out to all clients.
+  rpc Result(stream QueryMessage) returns (stream OutcomeMessage) {}
+
+  // First call to Bid registers the auctioners
+  // Bidders can bid several times, but a bid must be higher than the previous one(s)
   rpc Bid(stream BidMessage) returns (stream StatusMessage) {} // Broadcast -- subcribe - server -> client via msgQueue
 }
 

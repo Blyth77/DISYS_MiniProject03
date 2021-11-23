@@ -37,31 +37,49 @@ type Server struct {
 }
 
 type sub struct {
-	stream   protos.AuctionhouseService_BidServer
+	stream   protos.AuctionhouseService_ResultServer
 	finished chan<- bool
 	id       int32
 }
 
 var messageHandle = raw{}
 
+// Bid is called upon a server obj and takes a AHService_Bidserver bc [....] .
+// The server obj stores the highest bid.
+// Client sends a bid msg (id, amount).
+// first call to bid is to register - other calls places bid higher than the previous.
+// check if the
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
-	fin := make(chan bool)
+	//fin := make(chan bool)
 
-	
+	var bid, err = stream.Recv()
+	if err != nil {
+		return err
+	}
 
-	s.auctioneer.Store(request.ClientId, sub{stream: stream, finished: fin, id: request.ClientId})
+	c, ok := s.auctioneer.Load(bid.ClientId)
+	if !ok {
+		s.auctioneer.Store(bid.ClientId, bid.Amount)
+		logger.InfoLogger.Printf("Storing new client %v, in server map", bid.ClientId)
+	}
 
+	if bid.Amount > c.(int32) {
+		s.auctioneer.Store(bid.ClientId, bid.Amount)
+		logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
+	}
+
+	//s.auctioneer.Store(request.ClientId, sub{stream: stream, finished: fin, id: request.ClientId})
 	//addToMessageQueue(request.ClientId, 1, request.UserName, "")
-
-	//go s.sendToClients(stream)
+	
 
 	bl := make(chan error)
 	return <-bl
 }
 
-// To be used in results
-func (s *Server) sendToClients(srv protos.AuctionhouseService_BidServer) {
+// To be used in results.
+// Sends(/Bodcast) msg to all clients
+func (s *Server) sendToClients(srv protos.AuctionhouseService_ResultServer) {
 	for {
 		for {
 
@@ -75,30 +93,36 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BidServer) {
 				messageHandle.mu.Unlock()
 				break
 			}
-			senderUniqueCode := messageHandle.MessageQue[0].ClientUniqueCode
-			senderName := messageHandle.MessageQue[0].ClientName
-			messageFromServer := messageHandle.MessageQue[0].Msg
-			messageCode := messageHandle.MessageQue[0].MessageCode
+			
+			
+			auctionStatusMessage := messageHandle.MessageQue[0].auctionStatusMessage
+			highestBid := messageHandle.MessageQue[0].highestBid
+			highestBidderID := messageHandle.MessageQue[0].highestBidderID
+			item := messageHandle.MessageQue[0].item
 
 			messageHandle.mu.Unlock()
 
 			s.auctioneer.Range(func(k, v interface{}) bool {
 				id, ok := k.(int32)
 				if !ok {
-					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast buyers key: %T", k))
 					return false
+					logger.ErrorLogger.Println(fmt.Sprintf("Failed to cast auctioneer id: %T", k))
 				}
 				sub, ok := v.(sub)
 				if !ok {
-					logger.InfoLogger.Println(fmt.Sprintf("Failed to cast buyers value: %T", v))
 					return false
+					logger.ErrorLogger.Println(fmt.Sprintf("Failed to cast auctioneer id: %T to sub", v))
 				}
 				// Send data over the gRPC stream to the client
-				if err := sub.stream.Send(&protos.StatusMessage{
-					Status: protos.Status_SUCCESS,
+				if err := sub.stream.Send(&protos.OutcomeMessage{
+					AuctionStatusMessage: auctionStatusMessage,
+					HighestBid: highestBid,
+					HighestBidderID: highestBidderID,
+					Item: item,
+
 				}); err != nil {
-					logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
 					s.unsubscribe = append(s.unsubscribe, id)
+					logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
 				}
 				return true
 			})
@@ -118,6 +142,7 @@ func (s *Server) sendToClients(srv protos.AuctionhouseService_BidServer) {
 	}
 }
 
+//TODO: IMPLEMENT WHEN QUIT AND WHEN DEAD
 func (s *Server) killAuctioneer() {
 	for _, id := range s.unsubscribe {
 		//logger.InfoLogger.Printf("Killed client: %v", id)
@@ -125,38 +150,42 @@ func (s *Server) killAuctioneer() {
 		idd := int32(id)
 		m, ok := s.auctioneer.Load(idd)
 		if !ok && m != nil {
-			logger.InfoLogger.Println(fmt.Sprintf("Failed to find buyer value: %T", idd))
+			logger.InfoLogger.Println(fmt.Sprintf("Failed to find auctioneer id: %T", idd))
 		}
 		sub, ok := m.(sub)
 		if !ok && m != nil {
-			logger.WarningLogger.Panicf("Failed to cast buyer value: %T", sub)
+			logger.WarningLogger.Panicf("Failed to cast auctioneer id: %T", sub)
 		}
 		if m != nil {
-			addToMessageQueue(id, 3, "client", "") // ændres
+			addToMessageQueue(0, id, "client", "has been killed") // ændres
 		}
 		s.auctioneer.Delete(id)
+		logger.InfoLogger.Printf("Client id %v has been killed and deleted", id)
 	}
 }
 
-func (s *Server) Results(srv protos.AuctionhouseService_ResultServer) error {
+// 
+func (s *Server) Results(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
-	go s.receiveFromStream(srv, er)
-	go sendToStream(srv, er)
+	go s.receiveFromStream(stream, er)
+	go sendToStream(stream, er)
+	go s.sendToClients(stream)
 
 	return <-er
 }
 
+//
 func (s *Server) receiveFromStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
-
-	//implement a loop
 	for {
 		msg, err := srv.Recv()
 		if err != nil {
 			break
 		}
 		id := msg.ClientId
-
+		// how to add to queue?
+		addToMessageQueue(id, msg.)
+		// query message does not have Code fields?
 		switch {
 		case msg.Code == 2: // disconnecting
 			s.unsubscribe = append(s.unsubscribe, id)
@@ -168,6 +197,7 @@ func (s *Server) receiveFromStream(srv protos.AuctionhouseService_ResultServer, 
 	}
 }
 
+//Add a msg to a queue for processing all messages
 func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, item string) {
 	messageHandle.mu.Lock()
 
@@ -183,6 +213,7 @@ func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, 
 	messageHandle.mu.Unlock()
 }
 
+//
 func sendToStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
 		time.Sleep(500 * time.Millisecond)

@@ -51,6 +51,7 @@ func main() {
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
 
+	//Query result
 	go channelResult.sendQueryMessage(*client)
 	go channelResult.receiveFromResult()
 
@@ -65,7 +66,7 @@ func main() {
 func (client *AuctionClient) setupBidStream() clienthandle {
 	streamOut, err := client.clientService.Bid(context.Background())
 	if err != nil {
-		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService :: %v", err)
+		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
 
 	ch := clienthandle{
@@ -77,7 +78,7 @@ func (client *AuctionClient) setupBidStream() clienthandle {
 func (client *AuctionClient) setupResultStream() clienthandle {
 	streamOut, err := client.clientService.Result(context.Background())
 	if err != nil {
-		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService :: %v", err)
+		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
 
 	ch := clienthandle{
@@ -86,7 +87,8 @@ func (client *AuctionClient) setupResultStream() clienthandle {
 	return ch
 }
 
-// Result
+// Ask server (by sending query msg w. client id) to send result msg (includes: auctionStatusMessage, highest bid,
+// id of the client w. the highest bid and the item for which they are bidding on)
 func (ch *clienthandle) sendQueryMessage(client AuctionClient) {
 	for {
 
@@ -96,11 +98,13 @@ func (ch *clienthandle) sendQueryMessage(client AuctionClient) {
 
 		err := ch.streamResultOut.Send(queryMessage)
 		if err != nil {
-			logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
+			logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
 		}
 	}
 }
 
+//send result msg, when queried by client or time for item has runned out
+// TODO : IMPLEMENT
 func (ch *clienthandle) receiveFromResult() {
 	for {
 		response, err := ch.streamResultOut.Recv()
@@ -117,7 +121,7 @@ func (ch *clienthandle) receiveFromResult() {
 	}
 }
 
-// BID
+// Client send bid request incl. userinput: amount
 func (ch *clienthandle) sendMessageBid(client AuctionClient) {
 	for {
 		amount, _ := strconv.Atoi(UserInput())
@@ -129,21 +133,26 @@ func (ch *clienthandle) sendMessageBid(client AuctionClient) {
 
 		err := ch.streamBidOut.Send(clientMessageBox)
 		if err != nil {
-			logger.WarningLogger.Printf("Error while sending message to server :: %v", err)
+			Output("An error occured while bidding, please try again")
+			logger.WarningLogger.Printf("Error while sending message to server: %v", err)
+		} else {
+			logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amount)
 		}
 	}
 }
 
+// When client has sent a bid request - recieves a status message: success, fail or expection
 func (ch *clienthandle) recvStatus() {
 	for {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {
-			logger.InfoLogger.Printf("Error in receiving message from server :: %v", msg)
+			logger.InfoLogger.Printf("Error in receiving message from server: %v", msg)
 			Output("Server recieved bid!") //Maybe says more things!
 		}
 	}
 }
 
+//Connects and creates client through protos.NewAuctionhouseServiceClient(connection)
 func makeClient() (*AuctionClient, error) {
 	conn, err := makeConnection()
 	if err != nil {
@@ -180,7 +189,7 @@ func UserInput() string {
 	reader := bufio.NewReader(os.Stdin)
 	msg, err := reader.ReadString('\n')
 	if err != nil {
-		logger.ErrorLogger.Printf(" Failed to read from console :: %v", err)
+		logger.ErrorLogger.Printf(" Failed to read from console: %v", err)
 	}
 	msg = strings.Trim(msg, "\r\n")
 
