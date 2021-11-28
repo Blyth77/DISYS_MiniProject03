@@ -38,7 +38,8 @@ type Server struct {
 }
 
 type sub struct {
-	streamBid    protos.AuctionhouseService_BidServer
+	streamBid protos.AuctionhouseService_BidServer
+	// bliver nødt til at gemme denne resultstream også
 	streamResult protos.AuctionhouseService_ResultServer
 	finished     chan<- bool
 	amount       int32
@@ -188,6 +189,22 @@ func (s *Server) Results(stream protos.AuctionhouseService_ResultServer) error {
 	// send to one client missing
 
 	return <-er
+}
+
+func (s *Server) resultStreamSubcribe(srv protos.AuctionhouseService_ResultServer) {
+	for {
+		// probably wrong - maybe the method should recieve a srv.Recv()? - QueryResult
+		id, err := srv.Recv()
+		if err != nil {
+			break
+		}
+
+		subr, _ := s.auctioneer.Load(id)
+		subri := subr.(sub)
+		if subri.streamResult == nil {
+			subri.streamResult = srv
+		}
+	}
 }
 
 // wait for a client to ask for the highest bidder
