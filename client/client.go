@@ -6,7 +6,6 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
@@ -18,9 +17,10 @@ import (
 )
 
 var (
-	port      = ":3000"
-	ID        int32
-	connected bool
+	port         = ":3000"
+	ID           int32
+	connected    bool
+	sendingQuery bool
 )
 
 type AuctionClient struct {
@@ -51,16 +51,42 @@ func main() {
 
 	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
 
+	// UserInput
+	go UserInput(client) //maybe? keeping sending alive
+
 	//Query result
-	go channelResult.sendQueryResult(*client)
 	go channelResult.receiveFromResult()
 
 	// BID
-	go channelBid.sendBidRequest(*client)
+
 	go channelBid.recvBidStatus()
 
 	bl := make(chan bool)
 	<-bl
+}
+
+func UserInput(client *AuctionClient) {
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Split(bufio.ScanWords)
+	for scanner.Scan() {
+		scanner.Scan()
+		msg := scanner.Text()
+		scanner.Scan()
+		amount := scanner.Text()
+		switch {
+		case msg == "r":
+		case msg == "query":
+			// set bool sendingQuery
+			ch.sendQueryResult(*client)
+		case msg == "bid":
+			ch.sendBidRequest(*client, amount)
+		case msg == "q":
+			Quit()
+		case msg == "h":
+			Help()
+		default:
+		}
+	}
 }
 
 func (client *AuctionClient) setupBidStream() clienthandle {
@@ -91,15 +117,21 @@ func (client *AuctionClient) setupResultStream() clienthandle {
 // id of the client w. the highest bid and the item for which they are bidding on)
 func (ch *clienthandle) sendQueryResult(client AuctionClient) {
 	for {
+		if !sendingQuery {
+			time.Sleep(1 * time.Second)
+		} else {
+			queryResult := &protos.QueryResult{
+				ClientId: ID,
+			}
 
-		queryResult := &protos.QueryResult{
-			ClientId: ID,
+			err := ch.streamResultOut.Send(queryResult)
+			logger.InfoLogger.Printf("Sending query from client %d", ID)
+			println("sending query")
+			if err != nil {
+				logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
+			}
 		}
-
-		err := ch.streamResultOut.Send(queryResult)
-		if err != nil {
-			logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
-		}
+		sendingQuery = false
 	}
 }
 
@@ -127,21 +159,25 @@ func (ch *clienthandle) receiveFromResult() {
 }
 
 // Client send bid request incl. userinput: amount
-func (ch *clienthandle) sendBidRequest(client AuctionClient) {
+func (ch *clienthandle) sendBidRequest(client AuctionClient, amount string) {
 	for {
-		amount, _ := strconv.Atoi(UserInput())
+		amount, err1 := strconv.Atoi(amount)
+		if err1 != nil {
 
-		clientMessageBox := &protos.BidRequest{
-			ClientId: ID,
-			Amount:   int32(amount),
-		}
-
-		err := ch.streamBidOut.Send(clientMessageBox)
-		if err != nil {
-			Output("An error occured while bidding, please try again")
-			logger.WarningLogger.Printf("Error while sending message to server: %v", err)
 		} else {
-			logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amount)
+
+			clientMessageBox := &protos.BidRequest{
+				ClientId: ID,
+				Amount:   int32(amount),
+			}
+
+			err := ch.streamBidOut.Send(clientMessageBox)
+			if err != nil {
+				Output("An error occured while bidding, please try again")
+				logger.WarningLogger.Printf("Error while sending message to server: %v", err)
+			} else {
+				logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amount)
+			}
 		}
 	}
 }
@@ -152,8 +188,8 @@ func (ch *clienthandle) recvBidStatus() {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {
 			logger.InfoLogger.Printf("Error in receiving message from server: %v", msg)
-			Output("Server recieved bid!") //Maybe says more things!
 		}
+		Output(fmt.Sprintf("Server recieved bid!, %v", msg.Status)) //Maybe says more things!
 		connected = true
 	}
 }
@@ -237,28 +273,6 @@ func Help() {
 				q
 			in the terminal, followed by enter.
 		`)
-}
-
-func UserInput() string {
-	reader := bufio.NewReader(os.Stdin)
-	msg, err := reader.ReadString('\n')
-	if err != nil {
-		logger.ErrorLogger.Printf(" Failed to read from console: %v", err)
-	}
-	msg = strings.Trim(msg, "\r\n")
-
-	switch {
-	case msg == "r":
-		//result
-	case msg == "q":
-		Quit()
-	case msg == "h":
-		Help()
-	default:
-		//bid
-	}
-
-	return msg
 }
 
 func Output(input string) {
