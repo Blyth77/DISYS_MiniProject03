@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	port       = ":3000"
-	ID         int32
+	port      = ":3000"
+	ID        int32
+	connected bool
 )
 
 type AuctionClient struct {
@@ -106,18 +107,23 @@ func (ch *clienthandle) sendQueryResult(client AuctionClient) {
 // TODO : IMPLEMENT
 func (ch *clienthandle) receiveFromResult() {
 	for {
-		response, err := ch.streamResultOut.Recv()
-		if err != nil {
-			logger.WarningLogger.Printf("Failed to receive message: %v", err)
-		}
+		if !connected {
+			break
+		} else {
+			response, err := ch.streamResultOut.Recv()
+			if err != nil {
+				logger.WarningLogger.Printf("Failed to receive message: %v", err)
+			}
 
-		Output(fmt.Sprintf("Highest bid: %v", response.HighestBid)) // selvføli det ska.. der ska mere her ik
-		// some log + 
-		/* 	string auctionStatusMessage = 1;
-		int32 highestBid = 2;
-		int32 highestBidderID = 3;
-		string item = 4; */
+			Output(fmt.Sprintf("Highest bid: %v", response.HighestBid)) // selvføli det ska.. der ska mere her ik
+			// some log +
+			/* 	string auctionStatusMessage = 1;
+			int32 highestBid = 2;
+			int32 highestBidderID = 3;
+			string item = 4; */
+		}
 	}
+
 }
 
 // Client send bid request incl. userinput: amount
@@ -148,6 +154,7 @@ func (ch *clienthandle) recvBidStatus() {
 			logger.InfoLogger.Printf("Error in receiving message from server: %v", msg)
 			Output("Server recieved bid!") //Maybe says more things!
 		}
+		connected = true
 	}
 }
 
@@ -204,12 +211,12 @@ INPUTS
 
 func Quit() {
 	Output("Connection to server closed. Press any key to exit.\n")
-	
+
 	UserInput()
 	os.Exit(3)
 }
 
-func Help(){
+func Help() {
 	Output(`
 	This is the Auction House, here you can bid on different items.
 	A certain amount of time is set off for clients to bid on an item.
@@ -241,15 +248,15 @@ func UserInput() string {
 	msg = strings.Trim(msg, "\r\n")
 
 	switch {
-		case msg == "r":
-			//result
-		case msg == "q": 
-			Quit()
-		case msg == "h":
-			Help()
-		default:
-			//bid
-		}
+	case msg == "r":
+		//result
+	case msg == "q":
+		Quit()
+	case msg == "h":
+		Help()
+	default:
+		//bid
+	}
 
 	return msg
 }
