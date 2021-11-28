@@ -17,10 +17,9 @@ import (
 )
 
 var (
-	port         = ":3000"
-	ID           int32
-	connected    bool
-	sendingQuery bool
+	port      = ":3000"
+	ID        int32
+	connected bool
 )
 
 type AuctionClient struct {
@@ -52,7 +51,7 @@ func main() {
 	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
 
 	// UserInput
-	go UserInput(client) //maybe? keeping sending alive
+	go UserInput(client, channelBid, channelResult) 
 
 	//Query result
 	go channelResult.receiveFromResult()
@@ -65,26 +64,27 @@ func main() {
 	<-bl
 }
 
-func UserInput(client *AuctionClient) {
-	scanner := bufio.NewScanner(os.Stdin)
-	scanner.Split(bufio.ScanWords)
-	for scanner.Scan() {
-		scanner.Scan()
-		msg := scanner.Text()
-		scanner.Scan()
-		amount := scanner.Text()
-		switch {
-		case msg == "r":
-		case msg == "query":
-			// set bool sendingQuery
-			ch.sendQueryResult(*client)
-		case msg == "bid":
-			ch.sendBidRequest(*client, amount)
-		case msg == "q":
-			Quit()
-		case msg == "h":
-			Help()
-		default:
+func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
+	for {
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Split(bufio.ScanWords)
+		for scanner.Scan() {
+			scanner.Scan()
+			msg := scanner.Text()
+			scanner.Scan()
+			amount := scanner.Text()
+			switch {
+			case msg == "r":
+			case msg == "query":
+				result.sendQueryResult(*client)
+			case msg == "bid":
+				bid.sendBidRequest(*client, amount)
+			case msg == "q":
+				Quit()
+			case msg == "h":
+				Help()
+			default:
+			}
 		}
 	}
 }
@@ -116,22 +116,15 @@ func (client *AuctionClient) setupResultStream() clienthandle {
 // Ask server (by sending query msg w. client id) to send result msg (includes: auctionStatusMessage, highest bid,
 // id of the client w. the highest bid and the item for which they are bidding on)
 func (ch *clienthandle) sendQueryResult(client AuctionClient) {
-	for {
-		if !sendingQuery {
-			time.Sleep(1 * time.Second)
-		} else {
-			queryResult := &protos.QueryResult{
-				ClientId: ID,
-			}
+	queryResult := &protos.QueryResult{
+		ClientId: ID,
+	}
 
-			err := ch.streamResultOut.Send(queryResult)
-			logger.InfoLogger.Printf("Sending query from client %d", ID)
-			println("sending query")
-			if err != nil {
-				logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
-			}
-		}
-		sendingQuery = false
+	err := ch.streamResultOut.Send(queryResult)
+	logger.InfoLogger.Printf("Sending query from client %d", ID)
+	println("sending query")
+	if err != nil {
+		logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
 	}
 }
 
@@ -159,25 +152,23 @@ func (ch *clienthandle) receiveFromResult() {
 }
 
 // Client send bid request incl. userinput: amount
-func (ch *clienthandle) sendBidRequest(client AuctionClient, amount string) {
-	for {
-		amount, err1 := strconv.Atoi(amount)
-		if err1 != nil {
+func (ch *clienthandle) sendBidRequest(client AuctionClient, amountValue string) {
+	amount, err1 := strconv.Atoi(amountValue)
+	if err1 != nil {
 
+	} else {
+
+		clientMessageBox := &protos.BidRequest{
+			ClientId: ID,
+			Amount:   int32(amount),
+		}
+
+		err := ch.streamBidOut.Send(clientMessageBox)
+		if err != nil {
+			Output("An error occured while bidding, please try again")
+			logger.WarningLogger.Printf("Error while sending message to server: %v", err)
 		} else {
-
-			clientMessageBox := &protos.BidRequest{
-				ClientId: ID,
-				Amount:   int32(amount),
-			}
-
-			err := ch.streamBidOut.Send(clientMessageBox)
-			if err != nil {
-				Output("An error occured while bidding, please try again")
-				logger.WarningLogger.Printf("Error while sending message to server: %v", err)
-			} else {
-				logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amount)
-			}
+			logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amount)
 		}
 	}
 }
@@ -247,8 +238,6 @@ INPUTS
 
 func Quit() {
 	Output("Connection to server closed. Press any key to exit.\n")
-
-	UserInput()
 	os.Exit(3)
 }
 
