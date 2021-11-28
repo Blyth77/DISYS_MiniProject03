@@ -19,7 +19,6 @@ import (
 
 var (
 	port       = ":3000"
-	clientName string
 	ID         int32
 )
 
@@ -46,10 +45,10 @@ func main() {
 		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
 	}
 
-	client.EnterUsername()
-
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
+
+	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
 
 	//Query result
 	go channelResult.sendQueryResult(*client)
@@ -113,7 +112,7 @@ func (ch *clienthandle) receiveFromResult() {
 		}
 
 		Output(fmt.Sprintf("Highest bid: %v", response.HighestBid)) // selvføli det ska.. der ska mere her ik
-
+		// some log + 
 		/* 	string auctionStatusMessage = 1;
 		int32 highestBid = 2;
 		int32 highestBidderID = 3;
@@ -175,14 +174,62 @@ ______________________________________________________
 ======================================================
     **>>> WELCOME TO BARBETTES AUCTIONHOUSE <<<**
 ======================================================
-Please enter an username to begin:`
+Here you can bid on different items.
+A certain amount of time is set off for clients to bid on an item.
+The time on the items are NOT displayed to the clients, so if you wanna bid do it fast.
+
+INPUTS
+----------------------------------------------------------------------------------------------------------------
+	Bidding on an item: 
+		To bid on an item just write the amount in the terminal, followed by enter, the bid must be a valid int.
+
+	Information about current item:
+		To ask the auctioneer what item you are bidding on and what the highest bid is please write:
+			r
+		in the terminal, followed by enter.
+
+	Quitting:
+		To quit the auction please write:
+			q
+		in the terminal, followed by enter.
+
+	Help:
+		To get the input explaination again please write:
+			h
+		in the terminal, followed by enter.
+------------------------------------------------------------------------------------------------------------------
+
+`
 }
 
-func (s *AuctionClient) EnterUsername() {
-	clientName = UserInput()
-	Welcome(clientName)
-	logger.InfoLogger.Printf("User registred: %s", clientName)
-	println(clientName)
+func Quit() {
+	Output("Connection to server closed. Press any key to exit.\n")
+	
+	UserInput()
+	os.Exit(3)
+}
+
+func Help(){
+	Output(`
+	This is the Auction House, here you can bid on different items.
+	A certain amount of time is set off for clients to bid on an item.
+	The time on the items are NOT displayed to the clients, so if you wanna bid do it fast.
+
+	INPUTS
+	----------------------------------------------------------------------------------------------------------------
+		Bidding on an item: 
+			To bid on an item just write the amount in the terminal, followed by enter, the bid must be a valid int.
+
+		Information about current item:
+			To ask the auctioneer what item you are bidding on and what the highest bid is please write:
+				r
+			in the terminal, followed by enter.
+
+		Quitting:
+			To quit the auction please write:
+				q
+			in the terminal, followed by enter.
+		`)
 }
 
 func UserInput() string {
@@ -193,15 +240,18 @@ func UserInput() string {
 	}
 	msg = strings.Trim(msg, "\r\n")
 
+	switch {
+		case msg == "r":
+			//result
+		case msg == "q": 
+			Quit()
+		case msg == "h":
+			Help()
+		default:
+			//bid
+		}
+
 	return msg
-}
-
-func Welcome(input string) {
-	Output("Type: '-- quit' to exit")
-}
-
-func FormatToChat(user, msg string, timestamp int32) string {
-	return fmt.Sprintf("%d - %v:  %v", timestamp, user, msg)
 }
 
 func Output(input string) {
