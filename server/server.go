@@ -56,20 +56,15 @@ var messageHandle = raw{}
 // first call to bid is to register - other calls places bid higher than the previous.
 // check if the
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
-
 	fin := make(chan bool)
-	// needs a go routine
 
 	go s.HandleNewBidForClient(fin, stream)
 
-	//s.auctioneer.Store(request.ClientId, sub{stream: stream, finished: fin, id: request.ClientId})
-	//addToMessageQueue(request.ClientId, 1, request.UserName, "")
 
 	bl := make(chan error)
 	return <-bl
 }
 
-// cursed?
 func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
 	for {
 		var bid, err = srv.Recv()
@@ -222,7 +217,6 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 		if err != nil {
 			break
 		}
-		println("I fired")
 		queryResponse := &protos.ResponseToQuery{
 			AuctionStatusMessage: "",
 			HighestBid:           currentHighestBidder.HighestBidAmount,
@@ -232,7 +226,6 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 		srv.Send(queryResponse)
 		logger.InfoLogger.Println("Query sent to client")
 	}
-	println("loop exited")
 }
 
 //Add a msg to a queue for processing all messages

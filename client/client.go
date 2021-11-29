@@ -114,7 +114,6 @@ func (ch *clienthandle) sendQueryResult(client AuctionClient) {
 
 	err := ch.streamResultOut.Send(queryResult)
 	logger.InfoLogger.Printf("Sending query from client %d", ID)
-	println("sending query")
 	if err != nil {
 		logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
 	}
@@ -125,7 +124,7 @@ func (ch *clienthandle) sendQueryResult(client AuctionClient) {
 func (ch *clienthandle) receiveFromResult() {
 	for {
 		if !connected {
-			break
+			time.Sleep(1*time.Second)
 		} else {
 			response, err := ch.streamResultOut.Recv()
 			if err != nil {
@@ -133,14 +132,8 @@ func (ch *clienthandle) receiveFromResult() {
 			}
 
 			Output(fmt.Sprintf("Highest bid: %v", response.HighestBid)) // selvføli det ska.. der ska mere her ik
-			// some log +
-			/* 	string auctionStatusMessage = 1;
-			int32 highestBid = 2;
-			int32 highestBidderID = 3;
-			string item = 4; */
 		}
 	}
-
 }
 
 // Client send bid request incl. userinput: amount
