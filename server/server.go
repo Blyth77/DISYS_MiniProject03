@@ -60,7 +60,6 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 	go s.HandleNewBidForClient(fin, stream)
 
-
 	bl := make(chan error)
 	return <-bl
 }
@@ -69,8 +68,9 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 	for {
 		var bid, err = srv.Recv()
 		if err != nil {
-			// logger thingy
+			logger.ErrorLogger.Fatalf("FATAL: failed to recive bid from client: %s", err)
 		}
+
 		//check if client is subscribed
 		_, ok := s.auctioneer.Load(bid.ClientId)
 		if !ok {
@@ -80,37 +80,35 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 
 		//Handle new bid - is bid higher than the last highest bid?
 		if bid.Amount > currentHighestBidder.HighestBidAmount {
-			hb1 := HighestBidder{
+			highBidder := HighestBidder{
 				HighestBidAmount: bid.Amount,
 				HighestBidderID:  bid.ClientId,
 				streamBid:        srv,
 			}
-			currentHighestBidder = hb1
+			currentHighestBidder = highBidder
 			logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
 		}
-
 		s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 	}
 }
 
 func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
-	// check for status:
-	// NOW_HIGHEST_BIDDER, TOO_LOW_BID, EXCEPTION
 	var status protos.Status
 
 	switch {
-	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount < currentBid:
+	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
 		status = protos.Status_NOW_HIGHEST_BIDDER
-
 	case currentHighestBidder.HighestBidderID != currentBidderID || currentHighestBidder.HighestBidAmount > currentBid:
 		status = protos.Status_TOO_LOW_BID
 	default:
-		// case EXCEPTION
+		status = protos.Status_EXCEPTION
 	}
 
 	bidStatus := &protos.StatusOfBid{
-		Status: status,
+		Status:     status,
+		HighestBid: currentHighestBidder.HighestBidAmount,
 	}
+	
 	stream.Send(bidStatus)
 }
 
@@ -244,23 +242,6 @@ func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, 
 	messageHandle.mu.Unlock()
 }
 
-// outcommented if parts are needed later on
-/* func sendToStream(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
-	for {
-		time.Sleep(500 * time.Millisecond)
-
-		err := srv.Send(&protos.StatusMessage{
-			Operation: "Publish()",
-			Status:    protos.Status_SUCCESS,
-		})
-
-		if err != nil {
-			logger.InfoLogger.Println(fmt.Sprintf("An error occured when sending message: %v", err))
-			er_ <- err
-		}
-	}
-}
-*/
 func main() {
 	serverId = 1 // Unhardcode : must get it from main
 	logger.LogFileInit("server", serverId)

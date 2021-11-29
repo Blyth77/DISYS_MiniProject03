@@ -40,12 +40,12 @@ message ResponseToQuery {
 // Message for prompting asking for highest bidder
 message QueryResult {
   int32 clientId = 1;
-
 }
 
 // Was bid successful? 
 message StatusOfBid {
-  Status status = 1; 
+  Status status = 1;
+  int32 highestBid = 2; 
 }
 
 enum Status {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
@@ -48,14 +49,8 @@ func main() {
 
 	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
 
-	// UserInput
 	go UserInput(client, channelBid, channelResult)
-
-	//Query result
-	go channelResult.receiveFromResult()
-
-	// BID
-
+	go channelResult.receiveFromResultStream()
 	go channelBid.recvBidStatus()
 
 	bl := make(chan bool)
@@ -66,17 +61,20 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 	for {
 		var option string
 		var amount int32
+
 		fmt.Scanf("%s %d", &option, &amount)
+		option = strings.ToLower(option)
 		switch {
 		case option == "query":
-			result.sendQueryResult(*client)
+			result.sendQueryForResult(*client)
 		case option == "bid":
 			bid.sendBidRequest(*client, amount)
-		case option == "q":
-			Quit()
-		case option == "h":
+		case option == "quit":
+			Quit(client)
+		case option == "help":
 			Help()
 		default:
+			Output("Did not understand, pleasy try again. Type \"help\" for help.")
 		}
 	}
 }
@@ -86,11 +84,7 @@ func (client *AuctionClient) setupBidStream() clienthandle {
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
-
-	ch := clienthandle{
-		streamBidOut: streamOut,
-	}
-	return ch
+	return clienthandle{streamBidOut: streamOut}
 }
 
 func (client *AuctionClient) setupResultStream() clienthandle {
@@ -99,56 +93,47 @@ func (client *AuctionClient) setupResultStream() clienthandle {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
 
-	ch := clienthandle{
-		streamResultOut: streamOut,
-	}
-	return ch
+	return clienthandle{streamResultOut: streamOut}
 }
 
-// Ask server (by sending query msg w. client id) to send result msg (includes: auctionStatusMessage, highest bid,
-// id of the client w. the highest bid and the item for which they are bidding on)
-func (ch *clienthandle) sendQueryResult(client AuctionClient) {
-	queryResult := &protos.QueryResult{
-		ClientId: ID,
-	}
+func (ch *clienthandle) sendQueryForResult(client AuctionClient) {
+	queryResult := &protos.QueryResult{ClientId: ID}
+
+	logger.InfoLogger.Printf("Sending query from client %d", ID)
 
 	err := ch.streamResultOut.Send(queryResult)
-	logger.InfoLogger.Printf("Sending query from client %d", ID)
 	if err != nil {
 		logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
 	}
+
+	logger.InfoLogger.Printf("Sending query from client %d was a succes!", ID)
 }
 
-//send result msg, when queried by client or time for item has runned out
-// TODO : IMPLEMENT
-func (ch *clienthandle) receiveFromResult() {
+func (ch *clienthandle) receiveFromResultStream() {
 	for {
-		if !connected {
-			time.Sleep(1*time.Second)
+		if !connected { // To avoid sending before connected.
+			time.Sleep(1 * time.Second)
 		} else {
 			response, err := ch.streamResultOut.Recv()
 			if err != nil {
 				logger.WarningLogger.Printf("Failed to receive message: %v", err)
 			}
 
-			Output(fmt.Sprintf("Highest bid: %v", response.HighestBid)) // selvføli det ska.. der ska mere her ik
+			Output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
+			logger.InfoLogger.Println("Succesfully recieved response from query")
 		}
 	}
 }
 
-// Client send bid request incl. userinput: amount
 func (ch *clienthandle) sendBidRequest(client AuctionClient, amountValue int32) {
-	clientMessageBox := &protos.BidRequest{
-		ClientId: ID,
-		Amount:   amountValue,
-	}
+	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
 
 	err := ch.streamBidOut.Send(clientMessageBox)
 	if err != nil {
 		Output("An error occured while bidding, please try again")
 		logger.WarningLogger.Printf("Error while sending message to server: %v", err)
 	} else {
-		logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amountValue)
+		logger.InfoLogger.Printf("Client id: %v has bidded %v on item", ID, amountValue)
 	}
 }
 
@@ -158,9 +143,18 @@ func (ch *clienthandle) recvBidStatus() {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {
 			logger.InfoLogger.Printf("Error in receiving message from server: %v", msg)
+			connected = false
+		} else {
+			switch msg.Status {
+			case protos.Status_NOW_HIGHEST_BIDDER:
+				Output(fmt.Sprintf("We have recieved your bid! You now have the highest bid: %v", msg.HighestBid))
+			case protos.Status_TOO_LOW_BID:
+				Output(fmt.Sprintf("We have recieved your bid! Your bid was to low. The highest bid: %v", msg.HighestBid))
+			case protos.Status_EXCEPTION:
+				Output("Something went wrong, bid not accepted by the auctionhouse")
+			}
+			connected = true
 		}
-		Output(fmt.Sprintf("Server recieved bid!, %v", msg.Status)) //Maybe says more things!
-		connected = true
 	}
 }
 
@@ -198,25 +192,29 @@ INPUTS
 
 	Information about current item:
 		To ask the auctioneer what item you are bidding on and what the highest bid is please write:
-			r
+			query
 		in the terminal, followed by enter.
 
 	Quitting:
 		To quit the auction please write:
-			q
+			quit
 		in the terminal, followed by enter.
 
 	Help:
 		To get the input explaination again please write:
-			h
+			help
 		in the terminal, followed by enter.
 ------------------------------------------------------------------------------------------------------------------
 
 `
 }
 
-func Quit() {
+func Quit(client *AuctionClient) {
+	client.conn.Close()
 	Output("Connection to server closed. Press any key to exit.\n")
+
+	var o string
+	fmt.Scanln(&o)
 	os.Exit(3)
 }
 
