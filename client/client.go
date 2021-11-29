@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"math/rand"
 	"os"
-	"strconv"
 	"time"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
@@ -51,7 +49,7 @@ func main() {
 	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
 
 	// UserInput
-	go UserInput(client, channelBid, channelResult) 
+	go UserInput(client, channelBid, channelResult)
 
 	//Query result
 	go channelResult.receiveFromResult()
@@ -66,25 +64,19 @@ func main() {
 
 func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 	for {
-		scanner := bufio.NewScanner(os.Stdin)
-		scanner.Split(bufio.ScanWords)
-		for scanner.Scan() {
-			scanner.Scan()
-			msg := scanner.Text()
-			scanner.Scan()
-			amount := scanner.Text()
-			switch {
-			case msg == "r":
-			case msg == "query":
-				result.sendQueryResult(*client)
-			case msg == "bid":
-				bid.sendBidRequest(*client, amount)
-			case msg == "q":
-				Quit()
-			case msg == "h":
-				Help()
-			default:
-			}
+		var option string
+		var amount int32
+		fmt.Scanf("%s %d", &option, &amount)
+		switch {
+		case option == "query":
+			result.sendQueryResult(*client)
+		case option == "bid":
+			bid.sendBidRequest(*client, amount)
+		case option == "q":
+			Quit()
+		case option == "h":
+			Help()
+		default:
 		}
 	}
 }
@@ -152,24 +144,18 @@ func (ch *clienthandle) receiveFromResult() {
 }
 
 // Client send bid request incl. userinput: amount
-func (ch *clienthandle) sendBidRequest(client AuctionClient, amountValue string) {
-	amount, err1 := strconv.Atoi(amountValue)
-	if err1 != nil {
+func (ch *clienthandle) sendBidRequest(client AuctionClient, amountValue int32) {
+	clientMessageBox := &protos.BidRequest{
+		ClientId: ID,
+		Amount:   amountValue,
+	}
 
+	err := ch.streamBidOut.Send(clientMessageBox)
+	if err != nil {
+		Output("An error occured while bidding, please try again")
+		logger.WarningLogger.Printf("Error while sending message to server: %v", err)
 	} else {
-
-		clientMessageBox := &protos.BidRequest{
-			ClientId: ID,
-			Amount:   int32(amount),
-		}
-
-		err := ch.streamBidOut.Send(clientMessageBox)
-		if err != nil {
-			Output("An error occured while bidding, please try again")
-			logger.WarningLogger.Printf("Error while sending message to server: %v", err)
-		} else {
-			logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amount)
-		}
+		logger.InfoLogger.Printf("Client id: %v has bidded %v in currency on item", ID, amountValue)
 	}
 }
 
