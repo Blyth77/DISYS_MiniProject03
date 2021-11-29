@@ -68,27 +68,27 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 	for {
 		var bid, err = srv.Recv()
 		if err != nil {
-			logger.ErrorLogger.Fatalf("FATAL: failed to recive bid from client: %s", err)
-		}
-
-		//check if client is subscribed
-		_, ok := s.auctioneer.Load(bid.ClientId)
-		if !ok {
-			s.auctioneer.Store(bid.ClientId, sub{streamBid: srv, finished: fin})
-			logger.InfoLogger.Printf("Storing new client %v, in server map", bid.ClientId)
-		}
-
-		//Handle new bid - is bid higher than the last highest bid?
-		if bid.Amount > currentHighestBidder.HighestBidAmount {
-			highBidder := HighestBidder{
-				HighestBidAmount: bid.Amount,
-				HighestBidderID:  bid.ClientId,
-				streamBid:        srv,
+			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
+		} else {
+			//check if client is subscribed
+			_, ok := s.auctioneer.Load(bid.ClientId)
+			if !ok {
+				s.auctioneer.Store(bid.ClientId, sub{streamBid: srv, finished: fin})
+				logger.InfoLogger.Printf("Storing new client %v, in server map", bid.ClientId)
 			}
-			currentHighestBidder = highBidder
-			logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
+
+			//Handle new bid - is bid higher than the last highest bid?
+			if bid.Amount > currentHighestBidder.HighestBidAmount {
+				highBidder := HighestBidder{
+					HighestBidAmount: bid.Amount,
+					HighestBidderID:  bid.ClientId,
+					streamBid:        srv,
+				}
+				currentHighestBidder = highBidder
+				logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
+			}
+			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 		}
-		s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 	}
 }
 
@@ -108,7 +108,7 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 		Status:     status,
 		HighestBid: currentHighestBidder.HighestBidAmount,
 	}
-	
+
 	stream.Send(bidStatus)
 }
 
@@ -202,8 +202,6 @@ func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
 	go s.receiveQueryForResultAndSendToClient(stream, er)
-	//go sendToStream(stream, er) // back to bid
-	//go s.sendResultToAll(stream) // send to all when the auction is done
 
 	return <-er
 }
@@ -213,16 +211,21 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 	for {
 		_, err := srv.Recv()
 		if err != nil {
-			break
+			logger.WarningLogger.Printf("FATAL: failed to recive QueryResult from client: %s", err)
+		} else {
+
+			queryResponse := &protos.ResponseToQuery{
+				AuctionStatusMessage: "",
+				HighestBid:           currentHighestBidder.HighestBidAmount,
+				HighestBidderID:      currentHighestBidder.HighestBidderID,
+				Item:                 "",
+			}
+			er := srv.Send(queryResponse)
+			if er != nil {
+				logger.ErrorLogger.Fatalf("FATAL: failed to send ResponseToQuery to client: %s", err)
+			}
+			logger.InfoLogger.Println("Query sent to client")
 		}
-		queryResponse := &protos.ResponseToQuery{
-			AuctionStatusMessage: "",
-			HighestBid:           currentHighestBidder.HighestBidAmount,
-			HighestBidderID:      currentHighestBidder.HighestBidderID,
-			Item:                 "",
-		}
-		srv.Send(queryResponse)
-		logger.InfoLogger.Println("Query sent to client")
 	}
 }
 
@@ -262,6 +265,7 @@ func main() {
 			logger.ErrorLogger.Fatalf("FATAL: Server connection failed: %s", err)
 		}
 	}()
+	Output(fmt.Sprintf("Server connected on port: %v", port))
 
 	var o string
 	fmt.Scanln(&o)

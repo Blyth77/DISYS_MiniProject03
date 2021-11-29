@@ -34,16 +34,7 @@ type clienthandle struct {
 func main() {
 	Output(WelcomeMsg())
 
-	setup()
-	ID = int32(rand.Intn(1e4))
-
-	logger.LogFileInit("client", ID)
-
-	client, err := makeClient()
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
-	}
-
+	client := setupClient()
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
 
@@ -66,7 +57,11 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 		option = strings.ToLower(option)
 		switch {
 		case option == "query":
-			result.sendQueryForResult(*client)
+			if !connected{
+				Output("Please make a bid, before querying!")
+			} else {
+				result.sendQueryForResult(*client)
+			}
 		case option == "bid":
 			bid.sendBidRequest(*client, amount)
 		case option == "quit":
@@ -104,6 +99,7 @@ func (ch *clienthandle) sendQueryForResult(client AuctionClient) {
 	err := ch.streamResultOut.Send(queryResult)
 	if err != nil {
 		logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
+		Output("Something went wrong, please try again.")
 	}
 
 	logger.InfoLogger.Printf("Sending query from client %d was a succes!", ID)
@@ -116,11 +112,11 @@ func (ch *clienthandle) receiveFromResultStream() {
 		} else {
 			response, err := ch.streamResultOut.Recv()
 			if err != nil {
-				logger.WarningLogger.Printf("Failed to receive message: %v", err)
+				logger.ErrorLogger.Printf("Failed to receive message: %v", err)
+			} else {
+				Output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
+				logger.InfoLogger.Println("Succesfully recieved response from query")
 			}
-
-			Output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
-			logger.InfoLogger.Println("Succesfully recieved response from query")
 		}
 	}
 }
@@ -142,8 +138,9 @@ func (ch *clienthandle) recvBidStatus() {
 	for {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {
-			logger.InfoLogger.Printf("Error in receiving message from server: %v", msg)
+			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
 			connected = false
+			time.Sleep(5*time.Second) // waiting before trying to recieve again 
 		} else {
 			switch msg.Status {
 			case protos.Status_NOW_HIGHEST_BIDDER:
@@ -245,6 +242,19 @@ func Output(input string) {
 	fmt.Println(input)
 }
 
-func setup() {
+func setupClient() *AuctionClient {
+	setupClientID()
+
+	logger.LogFileInit("client", ID)
+
+	client, err := makeClient()
+	if err != nil {
+		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
+	}
+	return client
+}
+
+func setupClientID() {
 	rand.Seed(time.Now().UnixNano())
+	ID = int32(rand.Intn(1e4))
 }
