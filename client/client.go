@@ -38,19 +38,19 @@ func main() {
 
 	go frontend.Start(ID, port)
 
-
+   //--------------------
 	client := setupClient(port)
 	
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
 
 
-	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
+	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID") //minus
 
-	go UserInput(client, channelBid, channelResult)
+	go UserInput(client, channelBid, channelResult) // minus
 	go channelResult.receiveFromResultStream()
 	go channelBid.recvBidStatus()
-
+//______________________
 
 	bl := make(chan bool)
 	<-bl
@@ -150,6 +150,7 @@ func (ch *clienthandle) recvBidStatus() {
 			connected = false
 			time.Sleep(5 * time.Second) // waiting before trying to recieve again
 		} else {
+			// FRONTEND: skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid. 
 			switch msg.Status {
 			case protos.Status_NOW_HIGHEST_BIDDER:
 				Output(fmt.Sprintf("We have recieved your bid! You now have the highest bid: %v", msg.HighestBid))

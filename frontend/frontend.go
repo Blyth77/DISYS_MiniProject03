@@ -35,7 +35,7 @@ type HighestBidder struct {
 }
 
 func Start(id int32, port string) {
-	connectToNode(port)
+	connectToNode(port) //clienten's server og den er correct
 
 	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
 
@@ -49,7 +49,13 @@ func Start(id int32, port string) {
 		scanner.Scan()
 		po := scanner.Text()
 
-		connectToNode(po)
+		// Her skal de 3 metoder ind. og 2 go rutiner 
+
+
+
+		// Næste step. Når frontend modtager 5 forskellige svar fra fem replicas, 
+		// skal der tages majority og sendes tilbage til clienten. 
+		// svarne fra go rutinerne skal samles i en liste og så skal de compares på en eller anden måde. 
 
 	}
 
@@ -90,6 +96,7 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	return <-bl
 }
 
+// TODO ... skal modtage fra client of forwarde ti replicas. 
 func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
 	for {
 		var bid, err = srv.Recv()
@@ -118,9 +125,11 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 	}
 }
 
+//TODO
 func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
 	var status protos.Status
 
+	// Her skal den svarer clietn NÅR!!!!! den har modtaget majority af ackno fra replicas!
 	switch {
 	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
 		status = protos.Status_NOW_HIGHEST_BIDDER
@@ -154,7 +163,7 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 		if err != nil {
 			logger.WarningLogger.Printf("FATAL: failed to recive QueryResult from client: %s", err)
 		} else {
-
+			// her skal den finde majority af replicasnes svar
 			queryResponse := &protos.ResponseToQuery{
 				AuctionStatusMessage: "",
 				HighestBid:           currentHighestBidder.HighestBidAmount,
