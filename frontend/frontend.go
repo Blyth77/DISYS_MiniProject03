@@ -196,6 +196,7 @@ func forwardBidToReplica(ch frontendClienthandle) {
 			}
 		}
 		logger.InfoLogger.Println("Forwarding message to replicas..")
+		println("frontend forwarding")
 
 		messageHandle.mu.Lock()
 

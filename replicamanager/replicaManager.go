@@ -92,6 +92,7 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 				currentHighestBidder = highBidder
 				logger.InfoLogger.Printf("Storing new bid %d for frontend %d in Replica map", bid.Amount, bid.ClientId)
 			}
+			println("Replica Bid")
 			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 		}
 	}

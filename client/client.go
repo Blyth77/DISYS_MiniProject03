@@ -59,7 +59,8 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 		var amount int32
 
 		fmt.Scanf("%s %d", &option, &amount)
-		fmt.Printf("%s %d", option, amount)
+		println(option)
+		println(amount)
 		option = strings.ToLower(option)
 		switch {
 		case option == "query":
