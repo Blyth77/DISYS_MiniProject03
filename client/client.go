@@ -59,24 +59,24 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 		var amount int32
 
 		fmt.Scanf("%s %d", &option, &amount)
-		println(option)
-		println(amount)
 		option = strings.ToLower(option)
-		switch {
-		case option == "query":
-			if !connected {
-				Output("Please make a bid, before querying!")
-			} else {
-				result.sendQueryForResult(*client)
+		if option != "" || amount != 0 {
+			switch {
+			case option == "query":
+				if !connected {
+					Output("Please make a bid, before querying!")
+				} else {
+					result.sendQueryForResult(*client)
+				}
+			case option == "bid":
+				sendBidRequest(*client, amount, bid)
+			case option == "quit":
+				Quit(client) // Cause system to fuck up!
+			case option == "help":
+				Help()
+			default:
+				Output("Did not understand, pleasy try again. Type \"help\" for help.")
 			}
-		case option == "bid":
-			sendBidRequest(*client, amount, bid)
-		case option == "quit":
-			Quit(client) // Cause system to fuck up!
-		case option == "help":
-			Help()
-		default:
-			Output("Did not understand, pleasy try again. Type \"help\" for help.")
 		}
 	}
 }
@@ -130,7 +130,7 @@ func (ch *clienthandle) receiveFromResultStream() {
 
 func sendBidRequest(client AuctionClient, amountValue int32, ch clienthandle) {
 	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
-
+	
 	err := ch.streamBidOut.Send(clientMessageBox)
 	if err != nil {
 		Output("An error occured while bidding, please try again")
