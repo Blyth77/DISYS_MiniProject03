@@ -18,19 +18,6 @@ var (
 	currentHighestBidder = HighestBidder{}
 )
 
-type message struct {
-	auctionStatusMessage string
-	highestBid           int32
-	highestBidderID      int32
-	item                 string
-}
-
-// Holds msg queue
-type raw struct {
-	MessageQue []message
-	mu         sync.Mutex
-}
-
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
 	auctioneer  sync.Map
@@ -48,13 +35,33 @@ type HighestBidder struct {
 	streamBid        protos.AuctionhouseService_BidServer
 }
 
-var messageHandle = raw{}
+func main() {
+	serverId = 1 // Unhardcode : must get it from main
+	logger.LogFileInit("server", serverId)
 
-// Bid is called upon a server struct and takes a AHService_Bidserver bc [....] .
-// The server struct stores the highest bid.
-// Client sends a bid msg (id, amount).
-// first call to bid is to register - other calls places bid higher than the previous.
-// check if the
+	s := &Server{}
+
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		logger.InfoLogger.Printf(fmt.Sprintf("FATAL: Connection unable to establish. Failed to listen: %v", err))
+	}
+
+	grpcServer := grpc.NewServer()
+
+	protos.RegisterAuctionhouseServiceServer(grpcServer, s)
+
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			logger.ErrorLogger.Fatalf("FATAL: Server connection failed: %s", err)
+		}
+	}()
+	Output(fmt.Sprintf("Server connected on port: %v", port))
+
+	var o string
+	fmt.Scanln(&o)
+	os.Exit(3)
+}
+
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	fin := make(chan bool)
 
@@ -112,69 +119,6 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 	stream.Send(bidStatus)
 }
 
-/* // To be used in results.
-// Sends(/Bodcast) msg to all clients - is not needed anyways? see todo.txt
-func (s *Server) sendResultToAll(srv protos.AuctionhouseService_ResultServer) {
-	for {
-		for {
-
-			time.Sleep(500 * time.Millisecond)
-
-			messageHandle.mu.Lock()
-
-			// To be done in results
-			// Check if there is any messages to broadcast
-			if len(messageHandle.MessageQue) == 0 {
-				messageHandle.mu.Unlock()
-				break
-			}
-
-			auctionStatusMessage := messageHandle.MessageQue[0].auctionStatusMessage
-			highestBid := messageHandle.MessageQue[0].highestBid
-			highestBidderID := messageHandle.MessageQue[0].highestBidderID
-			item := messageHandle.MessageQue[0].item
-
-			messageHandle.mu.Unlock()
-
-			s.auctioneer.Range(func(k, v interface{}) bool {
-				id, ok := k.(int32)
-				if !ok {
-					logger.ErrorLogger.Println(fmt.Sprintf("Failed to cast auctioneer id: %T", k))
-					return false
-				}
-				sub, ok := v.(sub)
-				if !ok {
-					logger.ErrorLogger.Println(fmt.Sprintf("Failed to cast auctioneer id: %T to sub", v))
-					return false
-				}
-				// Send data over the gRPC stream to the client
-				if err := sub.streamResult.Send(&protos.ResponseToQuery{
-					AuctionStatusMessage: auctionStatusMessage,
-					HighestBid:           highestBid,
-					HighestBidderID:      highestBidderID,
-					Item:                 item,
-				}); err != nil {
-					s.unsubscribe = append(s.unsubscribe, id)
-					logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
-				}
-				return true
-			})
-
-			// Deletes just broadcasted message
-			messageHandle.mu.Lock()
-
-			if len(messageHandle.MessageQue) > 1 {
-				messageHandle.MessageQue = messageHandle.MessageQue[1:] // delete the message at index 0 after sending to receiver
-			} else {
-				messageHandle.MessageQue = []message{}
-			}
-
-			messageHandle.mu.Unlock()
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-} */
-
 // Unsubscribes client
 func (s *Server) killAuctioneer() {
 	for _, id := range s.unsubscribe {
@@ -190,7 +134,7 @@ func (s *Server) killAuctioneer() {
 			logger.WarningLogger.Panicf("Failed to cast auctioneer id: %T", sub)
 		}
 		if m != nil {
-			addToMessageQueue(0, id, "client", "has been killed") // ændres
+			Output(fmt.Sprintf("Client%v left the auction", idd))
 		}
 		s.auctioneer.Delete(id)
 		logger.InfoLogger.Printf("Client id %v has been killed and deleted", id)
@@ -229,48 +173,7 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 	}
 }
 
-//Add a msg to a queue for processing all messages
-func addToMessageQueue(highestBid, highestBidderID int32, auctionStatusMessage, item string) {
-	messageHandle.mu.Lock()
 
-	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
-		auctionStatusMessage: auctionStatusMessage,
-		highestBid:           highestBid,
-		highestBidderID:      highestBidderID,
-		item:                 item,
-	})
-
-	// logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
-
-	messageHandle.mu.Unlock()
-}
-
-func main() {
-	serverId = 1 // Unhardcode : must get it from main
-	logger.LogFileInit("server", serverId)
-
-	s := &Server{}
-
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
-	if err != nil {
-		logger.InfoLogger.Printf(fmt.Sprintf("FATAL: Connection unable to establish. Failed to listen: %v", err))
-	}
-
-	grpcServer := grpc.NewServer()
-
-	protos.RegisterAuctionhouseServiceServer(grpcServer, s)
-
-	go func() {
-		if err := grpcServer.Serve(lis); err != nil {
-			logger.ErrorLogger.Fatalf("FATAL: Server connection failed: %s", err)
-		}
-	}()
-	Output(fmt.Sprintf("Server connected on port: %v", port))
-
-	var o string
-	fmt.Scanln(&o)
-	os.Exit(3)
-}
 
 func Output(input string) {
 	fmt.Println(input)

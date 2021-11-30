@@ -65,7 +65,7 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 		case option == "bid":
 			bid.sendBidRequest(*client, amount)
 		case option == "quit":
-			Quit(client)
+			Quit(client) // Cause system to fuck up!
 		case option == "help":
 			Help()
 		default:
