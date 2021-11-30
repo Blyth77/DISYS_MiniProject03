@@ -19,7 +19,7 @@ func main() {
 
 	for i := 1; i <= numberOfReplicas; i++ { 
 		number := int32(i)
-		go replica.Start(number, (3000 + number))
+		go replica.Start(number, (6000 + number))
 	}
 
 	bl := make(chan bool)

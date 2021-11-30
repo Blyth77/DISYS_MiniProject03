@@ -1,4 +1,10 @@
 package server
+// Lav ikke nyt id
+// fix børnelokker
+// hvorfor grr katter den kun 2,5 gange
+// HVORFOR KØRER LOOPSNE SÅ MANGE GANGE!!!!
+// Hvorfor hopper barbette aldrig når hun lover det???????????
+// clean up 
 
 import (
 	"bufio"
@@ -18,25 +24,14 @@ import (
 
 var (
 	ID                   int32
-	currentHighestBidder = HighestBidder{}
 	connected            bool
 )
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	auctioneer sync.Map
 }
 
-type sub struct {
-	streamBid protos.AuctionhouseService_BidServer
-	finished  chan<- bool
-}
 
-type HighestBidder struct {
-	HighestBidAmount int32
-	HighestBidderID  int32
-	streamBid        protos.AuctionhouseService_BidServer
-}
 
 type frontendClientReplica struct {
 	clientService protos.AuctionhouseServiceClient
@@ -62,7 +57,7 @@ var messageHandle = msgqueue{}
 
 // called by client
 func Start(id int32, port string) {
-	connectToNode(port) //clienten's server og den er correct
+	go connectToNode(port) //clienten's server og den er correct
 
 	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
 
@@ -74,6 +69,7 @@ func Start(id int32, port string) {
 
 		scanner.Scan()
 		po := scanner.Text()
+
 
 		// Her skal de 3 metoder ind. og 2 go rutiner
 		frontendClientForReplica := setupFrontend(po)
@@ -88,7 +84,6 @@ func Start(id int32, port string) {
 		// Næste step. Når frontend modtager 5 forskellige svar fra fem replicas,
 		// skal der tages majority og sendes tilbage til clienten.
 		// svarne fra go rutinerne skal samles i en liste og så skal de compares på en eller anden måde.
-
 	}
 
 	bl := make(chan bool)
@@ -136,7 +131,6 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 		if err != nil {
 			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
 		} else {
-
 			/*
 				save srv.recv info in ex an TryClientBid
 
@@ -145,6 +139,7 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 
 			//check if client is subscribed
 			addToMessageQueue(bid.ClientId, bid.Amount)
+
 		}
 	}
 }
@@ -160,6 +155,7 @@ func addToMessageQueue(id, amount int32) {
 	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
 
 	messageHandle.mu.Unlock()
+
 }
 
 func RecieveBidResponseFromReplicas(srv protos.AuctionhouseService_BidServer, clientId, amount int32) {
@@ -169,12 +165,11 @@ func RecieveBidResponseFromReplicas(srv protos.AuctionhouseService_BidServer, cl
 }
 
 func forwardBidToReplica(ch frontendClienthandle) {
-	logger.InfoLogger.Println("Request send to clients")
 	//implement a loop
 	for {
-
 		//loop through messages in MessageQue
 		for {
+
 			messageHandle.mu.Lock()
 
 			if len(messageHandle.MessageQue) == 0 {
@@ -194,14 +189,14 @@ func forwardBidToReplica(ch frontendClienthandle) {
 				logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
 				// In case of error the client would re-subscribe so close the subscriber stream
 			}
+			logger.InfoLogger.Println("Forwarding message to replicas..")
+
 		}
-		logger.InfoLogger.Println("Forwarding message to replicas..")
-		println("frontend forwarding")
 
 		messageHandle.mu.Lock()
 
 		if len(messageHandle.MessageQue) > 1 {
-			messageHandle.MessageQue = messageHandle.MessageQue[1:] // delete the message at index 0 after sending to receiver
+			messageHandle.MessageQue = messageHandle.MessageQue[1:] 
 		} else {
 			messageHandle.MessageQue = []message{}
 		}
@@ -209,16 +204,17 @@ func forwardBidToReplica(ch frontendClienthandle) {
 		messageHandle.mu.Unlock()
 		time.Sleep(1 * time.Second)
 	}
+	
 }
 
 //TODO
 // recieve from replica
 func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
 
-	var status protos.Status
+	//var status protos.Status
 
 	// Her skal den svarer clienten NÅR!!!!! den har modtaget majority af ackno fra replicas!
-	switch {
+	/* switch {
 	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
 		status = protos.Status_NOW_HIGHEST_BIDDER
 	case currentHighestBidder.HighestBidderID != currentBidderID || currentHighestBidder.HighestBidAmount > currentBid:
@@ -230,9 +226,9 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 	bidStatus := &protos.StatusOfBid{
 		Status:     status,
 		HighestBid: currentHighestBidder.HighestBidAmount,
-	}
+	} */
 
-	stream.Send(bidStatus)
+	//stream.Send(bidStatus)
 }
 
 // When time has runned out : brodcast who the winner is
@@ -254,8 +250,8 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 			// her skal den finde majority af replicasnes svar
 			queryResponse := &protos.ResponseToQuery{
 				AuctionStatusMessage: "",
-				HighestBid:           currentHighestBidder.HighestBidAmount,
-				HighestBidderID:      currentHighestBidder.HighestBidderID,
+				//HighestBid:           currentHighestBidder.HighestBidAmount,
+				//HighestBidderID:      currentHighestBidder.HighestBidderID,
 				Item:                 "",
 			}
 			er := srv.Send(queryResponse)
@@ -274,6 +270,7 @@ func (client *frontendClientReplica) setupBidStream() frontendClienthandle {
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
+
 	return frontendClienthandle{streamBidOut: streamOut}
 }
 
@@ -282,6 +279,7 @@ func (frontendClient *frontendClientReplica) setupResultStream() frontendClienth
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
+
 
 	return frontendClienthandle{streamResultOut: streamOut}
 }
@@ -292,7 +290,9 @@ func setupFrontend(port string) *frontendClientReplica {
 	logger.LogFileInit("client", ID)
 
 	frontendClient, err := makeFrontendClient(port)
+
 	if err != nil {
+
 		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
 	}
 
@@ -343,11 +343,13 @@ func (frontendCh *frontendClienthandle) receiveFromResultStream() {
 
 //Connects and creates client through protos.NewAuctionhouseServiceClient(connection)
 func makeFrontendClient(port string) (*frontendClientReplica, error) {
+	println("Grrr cat3")
 
 	conn, err := makeConnection(port)
 	if err != nil {
 		return nil, err
 	}
+	println("Grrr cat4")
 
 	return &frontendClientReplica{
 		clientService: protos.NewAuctionhouseServiceClient(conn),
@@ -357,7 +359,7 @@ func makeFrontendClient(port string) (*frontendClientReplica, error) {
 
 func makeConnection(port string) (*grpc.ClientConn, error) {
 	logger.InfoLogger.Print("Connecting to the auctionhouse...")
-	return grpc.Dial(port, []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
+	return grpc.Dial(fmt.Sprintf(":%v", port), []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
 }
 
 func Output(input string) {

@@ -92,7 +92,6 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 				currentHighestBidder = highBidder
 				logger.InfoLogger.Printf("Storing new bid %d for frontend %d in Replica map", bid.Amount, bid.ClientId)
 			}
-			println("Replica Bid")
 			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 		}
 	}
@@ -114,8 +113,11 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 		Status:     status,
 		HighestBid: currentHighestBidder.HighestBidAmount,
 	}
+	println("Mis mis")
 
 	stream.Send(bidStatus)
+	println("Miav")
+
 }
 
 // When time has runned out : brodcast who the winner is
