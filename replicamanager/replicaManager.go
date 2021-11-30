@@ -32,6 +32,21 @@ type HighestBidder struct {
 	streamBid        protos.AuctionhouseService_BidServer
 }
 
+type message struct {
+	ClientUniqueCode int32
+	ClientName       string
+	Msg              string
+	MessageCode      int32
+	Lamport          int32
+}
+
+type msgqueue struct {
+	MessageQue []message
+	mu         sync.Mutex
+}
+
+var messageHandle = msgqueue{}
+
 func Start(id int32, po int32) {
 	port := po
 	logger.LogFileInit("replica", id)
@@ -47,11 +62,13 @@ func Start(id int32, po int32) {
 
 	protos.RegisterAuctionhouseServiceServer(grpcServer, s)
 
+
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
 			logger.ErrorLogger.Fatalf("FATAL: replica connection failed: %s", err)
 		}
 	}()
+
 	logger.InfoLogger.Println("mis")
 	Output(fmt.Sprintf("Replica connected on port: %v", port))
 
@@ -59,16 +76,43 @@ func Start(id int32, po int32) {
 	<-bl
 }
 
+
+func addToMessageQueue(id, lamport, code int32, username, msg string) {
+	messageHandle.mu.Lock()
+
+	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
+		ClientUniqueCode: id,
+		ClientName:       username,
+		Msg:              msg,
+		MessageCode:      code,
+		Lamport:          lamport,
+	})
+
+	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
+
+	messageHandle.mu.Unlock()
+}
+
+
+func SendBidRequestFromClientToReplicas(){
+
+}
+
+func RecieveBidResponseFromReplicas(){
+
+}
+
+
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	fin := make(chan bool)
 
-	go s.HandleNewBidForClient(fin, stream)
+	go s.RecieveBidFromClient(fin, stream)
 
 	bl := make(chan error)
 	return <-bl
 }
 
-func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
+func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
 	for {
 		var bid, err = srv.Recv()
 		if err != nil {

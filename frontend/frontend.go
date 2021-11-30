@@ -122,7 +122,16 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 		var bid, err = srv.Recv()
 		if err != nil {
 			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
+
 		} else {
+
+			
+			/* 
+				save srv.recv info in ex an TryClientBid
+
+				send(srv.Context())
+ 			*/
+
 			//check if client is subscribed
 			_, ok := s.auctioneer.Load(bid.ClientId)
 			if !ok {

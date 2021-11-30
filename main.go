@@ -27,6 +27,7 @@ func main() {
 }
 
 func makePortListForFrontEnd(numberOfReplicas int) {
+	
 	logger.ClearLog("replicamanager/portlist")
 	logger.MakeLogFolder("replicamanager/portlist")
 
@@ -35,6 +36,7 @@ func makePortListForFrontEnd(numberOfReplicas int) {
 	if err != nil {
 		//
 	}
+	
 	defer f.Close()
 	for i := 1; i <= numberOfReplicas; i++ {
 		if _, err := f.WriteString(fmt.Sprintf("%v\n", 6000+i)); err != nil {

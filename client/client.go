@@ -31,7 +31,7 @@ type clienthandle struct {
 }
 
 func main() {
-	port := fmt.Sprintf(":%v", os.Args[1])
+	port := fmt.Sprintf(":%v", "3000") //os.Args[1]
 
 	Output(WelcomeMsg())
 
@@ -69,7 +69,7 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 				result.sendQueryForResult(*client)
 			}
 		case option == "bid":
-			bid.sendBidRequest(*client, amount)
+			sendBidRequest(*client, amount, bid)
 		case option == "quit":
 			Quit(client) // Cause system to fuck up!
 		case option == "help":
@@ -127,7 +127,7 @@ func (ch *clienthandle) receiveFromResultStream() {
 	}
 }
 
-func (ch *clienthandle) sendBidRequest(client AuctionClient, amountValue int32) {
+func sendBidRequest(client AuctionClient, amountValue int32, ch clienthandle) {
 	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
 
 	err := ch.streamBidOut.Send(clientMessageBox)
