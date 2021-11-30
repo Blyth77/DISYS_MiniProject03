@@ -9,14 +9,14 @@ import (
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
+	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
+
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	//google_protobuf "github.com/golang/protobuf/ptypes/empty"
 )
 
 var (
-	port      = ":3000"
 	ID        int32
 	connected bool
 )
@@ -32,17 +32,25 @@ type clienthandle struct {
 }
 
 func main() {
+	port := fmt.Sprintf(":%v",os.Args[1])
+
 	Output(WelcomeMsg())
 
-	client := setupClient()
+	go frontend.Start(ID, port)
+
+
+	client := setupClient(port)
+	
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
+
 
 	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID")
 
 	go UserInput(client, channelBid, channelResult)
 	go channelResult.receiveFromResultStream()
 	go channelBid.recvBidStatus()
+
 
 	bl := make(chan bool)
 	<-bl
@@ -57,7 +65,7 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 		option = strings.ToLower(option)
 		switch {
 		case option == "query":
-			if !connected{
+			if !connected {
 				Output("Please make a bid, before querying!")
 			} else {
 				result.sendQueryForResult(*client)
@@ -140,7 +148,7 @@ func (ch *clienthandle) recvBidStatus() {
 		if err != nil {
 			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
 			connected = false
-			time.Sleep(5*time.Second) // waiting before trying to recieve again 
+			time.Sleep(5 * time.Second) // waiting before trying to recieve again
 		} else {
 			switch msg.Status {
 			case protos.Status_NOW_HIGHEST_BIDDER:
@@ -156,18 +164,23 @@ func (ch *clienthandle) recvBidStatus() {
 }
 
 //Connects and creates client through protos.NewAuctionhouseServiceClient(connection)
-func makeClient() (*AuctionClient, error) {
-	conn, err := makeConnection()
+func makeClient(port string) (*AuctionClient, error) {
+
+
+	conn, err := makeConnection(port)
 	if err != nil {
 		return nil, err
 	}
+
+
+
 	return &AuctionClient{
 		clientService: protos.NewAuctionhouseServiceClient(conn),
 		conn:          conn,
 	}, nil
 }
 
-func makeConnection() (*grpc.ClientConn, error) {
+func makeConnection(port string) (*grpc.ClientConn, error) {
 	logger.InfoLogger.Print("Connecting to the auctionhouse...")
 	return grpc.Dial(port, []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
 }
@@ -242,15 +255,17 @@ func Output(input string) {
 	fmt.Println(input)
 }
 
-func setupClient() *AuctionClient {
+func setupClient(port string) *AuctionClient {
 	setupClientID()
 
 	logger.LogFileInit("client", ID)
 
-	client, err := makeClient()
+	client, err := makeClient(port)
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
 	}
+
+
 	return client
 }
 

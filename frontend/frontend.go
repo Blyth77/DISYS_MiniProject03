@@ -1,6 +1,7 @@
-package main
+package server
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"os"
@@ -13,15 +14,13 @@ import (
 )
 
 var (
-	serverId             int32
-	port                 = 3000
+	ID                   int32
 	currentHighestBidder = HighestBidder{}
 )
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	auctioneer  sync.Map
-	unsubscribe []int32
+	auctioneer sync.Map
 }
 
 type sub struct {
@@ -35,13 +34,35 @@ type HighestBidder struct {
 	streamBid        protos.AuctionhouseService_BidServer
 }
 
-func main() {
-	serverId = 1 // Unhardcode : must get it from main
-	logger.LogFileInit("server", serverId)
+func Start(id int32, port string) {
+	connectToNode(port)
 
+	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
+
+
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	for scanner.Scan() {
+
+		scanner.Scan()
+		po := scanner.Text()
+
+		connectToNode(po)
+
+	}
+
+
+	bl := make(chan bool)
+	<-bl
+
+}
+
+func connectToNode(port string) {
 	s := &Server{}
 
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	lis, err := net.Listen("tcp", port)
 	if err != nil {
 		logger.InfoLogger.Printf(fmt.Sprintf("FATAL: Connection unable to establish. Failed to listen: %v", err))
 	}
@@ -55,11 +76,9 @@ func main() {
 			logger.ErrorLogger.Fatalf("FATAL: Server connection failed: %s", err)
 		}
 	}()
-	Output(fmt.Sprintf("Server connected on port: %v", port))
 
-	var o string
-	fmt.Scanln(&o)
-	os.Exit(3)
+	bl := make(chan bool)
+	<-bl
 }
 
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
@@ -119,28 +138,6 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 	stream.Send(bidStatus)
 }
 
-// Unsubscribes client
-func (s *Server) killAuctioneer() {
-	for _, id := range s.unsubscribe {
-		//logger.InfoLogger.Printf("Killed client: %v", id)
-
-		idd := int32(id)
-		m, ok := s.auctioneer.Load(idd)
-		if !ok && m != nil {
-			logger.InfoLogger.Println(fmt.Sprintf("Failed to find auctioneer id: %T", idd))
-		}
-		sub, ok := m.(sub)
-		if !ok && m != nil {
-			logger.WarningLogger.Panicf("Failed to cast auctioneer id: %T", sub)
-		}
-		if m != nil {
-			Output(fmt.Sprintf("Client%v left the auction", idd))
-		}
-		s.auctioneer.Delete(id)
-		logger.InfoLogger.Printf("Client id %v has been killed and deleted", id)
-	}
-}
-
 // When time has runned out : brodcast who the winner is
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
@@ -172,8 +169,6 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 		}
 	}
 }
-
-
 
 func Output(input string) {
 	fmt.Println(input)
