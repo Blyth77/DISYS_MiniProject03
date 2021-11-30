@@ -7,10 +7,9 @@ import (
 	"strings"
 	"time"
 
+	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
-	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
-
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -32,25 +31,24 @@ type clienthandle struct {
 }
 
 func main() {
-	port := fmt.Sprintf(":%v",os.Args[1])
+	port := fmt.Sprintf(":%v", os.Args[1])
 
 	Output(WelcomeMsg())
 
 	go frontend.Start(ID, port)
 
-   //--------------------
+	//--------------------
 	client := setupClient(port)
-	
+
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
-
 
 	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID") //minus
 
 	go UserInput(client, channelBid, channelResult) // minus
 	go channelResult.receiveFromResultStream()
 	go channelBid.recvBidStatus()
-//______________________
+	//______________________
 
 	bl := make(chan bool)
 	<-bl
@@ -150,7 +148,7 @@ func (ch *clienthandle) recvBidStatus() {
 			connected = false
 			time.Sleep(5 * time.Second) // waiting before trying to recieve again
 		} else {
-			// FRONTEND: skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid. 
+			// FRONTEND: skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid.
 			switch msg.Status {
 			case protos.Status_NOW_HIGHEST_BIDDER:
 				Output(fmt.Sprintf("We have recieved your bid! You now have the highest bid: %v", msg.HighestBid))
@@ -167,13 +165,10 @@ func (ch *clienthandle) recvBidStatus() {
 //Connects and creates client through protos.NewAuctionhouseServiceClient(connection)
 func makeClient(port string) (*AuctionClient, error) {
 
-
 	conn, err := makeConnection(port)
 	if err != nil {
 		return nil, err
 	}
-
-
 
 	return &AuctionClient{
 		clientService: protos.NewAuctionhouseServiceClient(conn),
@@ -265,7 +260,6 @@ func setupClient(port string) *AuctionClient {
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
 	}
-
 
 	return client
 }
