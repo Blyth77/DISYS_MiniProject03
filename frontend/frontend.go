@@ -43,11 +43,12 @@ type frontendClientReplica struct {
 	conn          *grpc.ClientConn
 }
 
-type FrontendClienthandle struct {
+type frontendClienthandle struct {
 	streamBidOut    protos.AuctionhouseService_BidClient
 	streamResultOut protos.AuctionhouseService_ResultClient
 }
 
+// called by client
 func Start(id int32, port string) {
 	connectToNode(port) //clienten's server og den er correct
 
@@ -64,7 +65,7 @@ func Start(id int32, port string) {
 
 		// Her skal de 3 metoder ind. og 2 go rutiner
 		frontendClientForReplica := setupFrontend(po)
-
+		Output(fmt.Sprintf("Frontend connected with replica on port: %v", po))
 		channelBid := frontendClientForReplica.setupBidStream()
 		channelResult := frontendClientForReplica.setupResultStream()
 
@@ -113,10 +114,11 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	return <-bl
 }
 
-// TODO ... skal modtage fra client of forwarde ti replicas.
+// TODO ... skal modtage fra client og forwarde til replicas.
 // skal ikke store auctioneers
 func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
 	for {
+		// får client id + amount
 		var bid, err = srv.Recv()
 		if err != nil {
 			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
@@ -146,6 +148,7 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 //TODO
 // recieve from replica
 func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
+
 	var status protos.Status
 
 	// Her skal den svarer clienten NÅR!!!!! den har modtaget majority af ackno fra replicas!
@@ -200,21 +203,21 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 
 // Client To replica del
 
-func (client *frontendClientReplica) setupBidStream() FrontendClienthandle {
+func (client *frontendClientReplica) setupBidStream() frontendClienthandle {
 	streamOut, err := client.clientService.Bid(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
-	return FrontendClienthandle{streamBidOut: streamOut}
+	return frontendClienthandle{streamBidOut: streamOut}
 }
 
-func (frontendClient *frontendClientReplica) setupResultStream() FrontendClienthandle {
+func (frontendClient *frontendClientReplica) setupResultStream() frontendClienthandle {
 	streamOut, err := frontendClient.clientService.Result(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
 
-	return FrontendClienthandle{streamResultOut: streamOut}
+	return frontendClienthandle{streamResultOut: streamOut}
 }
 
 func setupFrontend(port string) *frontendClientReplica {
@@ -236,7 +239,7 @@ func setupFClientReplicaID() {
 }
 
 // When client has sent a bid request - recieves a status message: success, fail or expection
-func (frontendCh *FrontendClienthandle) recvBidStatus() {
+func (frontendCh *frontendClienthandle) recvBidStatus() {
 	for {
 		msg, err := frontendCh.streamBidOut.Recv()
 		if err != nil {
@@ -256,7 +259,7 @@ func (frontendCh *FrontendClienthandle) recvBidStatus() {
 }
 
 // should this then wait for majority and send the result to the client?
-func (frontendCh *FrontendClienthandle) receiveFromResultStream() {
+func (frontendCh *frontendClienthandle) receiveFromResultStream() {
 	for {
 		if !connected { // To avoid sending before connected.
 			time.Sleep(1 * time.Second)
