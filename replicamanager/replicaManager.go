@@ -18,7 +18,7 @@ var (
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	auctioneer  sync.Map
+	auctioneer sync.Map
 }
 
 type sub struct {
@@ -32,24 +32,9 @@ type HighestBidder struct {
 	streamBid        protos.AuctionhouseService_BidServer
 }
 
-type message struct {
-	ClientUniqueCode int32
-	ClientName       string
-	Msg              string
-	MessageCode      int32
-	Lamport          int32
-}
-
-type msgqueue struct {
-	MessageQue []message
-	mu         sync.Mutex
-}
-
-var messageHandle = msgqueue{}
-
 func Start(id int32, po int32) {
 	port := po
-	logger.LogFileInit("replica", id)
+	//logger.LogFileInit("replica", id)
 
 	s := &Server{}
 
@@ -61,7 +46,6 @@ func Start(id int32, po int32) {
 	grpcServer := grpc.NewServer()
 
 	protos.RegisterAuctionhouseServiceServer(grpcServer, s)
-
 
 	go func() {
 		if err := grpcServer.Serve(lis); err != nil {
@@ -75,33 +59,6 @@ func Start(id int32, po int32) {
 	bl := make(chan bool)
 	<-bl
 }
-
-
-func addToMessageQueue(id, lamport, code int32, username, msg string) {
-	messageHandle.mu.Lock()
-
-	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
-		ClientUniqueCode: id,
-		ClientName:       username,
-		Msg:              msg,
-		MessageCode:      code,
-		Lamport:          lamport,
-	})
-
-	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
-
-	messageHandle.mu.Unlock()
-}
-
-
-func SendBidRequestFromClientToReplicas(){
-
-}
-
-func RecieveBidResponseFromReplicas(){
-
-}
-
 
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	fin := make(chan bool)
@@ -159,7 +116,6 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 
 	stream.Send(bidStatus)
 }
-
 
 // When time has runned out : brodcast who the winner is
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {

@@ -31,8 +31,7 @@ type clienthandle struct {
 }
 
 func main() {
-	port := fmt.Sprintf(":%v", "3000") //os.Args[1]
-
+	port := fmt.Sprintf(":%v", os.Args[1])
 	Output(WelcomeMsg())
 
 	go frontend.Start(ID, port)
@@ -60,6 +59,7 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 		var amount int32
 
 		fmt.Scanf("%s %d", &option, &amount)
+		fmt.Printf("%s %d", option, amount)
 		option = strings.ToLower(option)
 		switch {
 		case option == "query":

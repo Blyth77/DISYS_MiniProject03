@@ -48,6 +48,18 @@ type frontendClienthandle struct {
 	streamResultOut protos.AuctionhouseService_ResultClient
 }
 
+type message struct {
+	Id     int32
+	Amount int32
+}
+
+type msgqueue struct {
+	MessageQue []message
+	mu         sync.Mutex
+}
+
+var messageHandle = msgqueue{}
+
 // called by client
 func Start(id int32, port string) {
 	connectToNode(port) //clienten's server og den er correct
@@ -71,6 +83,7 @@ func Start(id int32, port string) {
 
 		go channelResult.receiveFromResultStream()
 		go channelBid.recvBidStatus()
+		go forwardBidToReplica(channelBid)
 
 		// Næste step. Når frontend modtager 5 forskellige svar fra fem replicas,
 		// skal der tages majority og sendes tilbage til clienten.
@@ -122,35 +135,78 @@ func (s *Server) HandleNewBidForClient(fin chan (bool), srv protos.AuctionhouseS
 		var bid, err = srv.Recv()
 		if err != nil {
 			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
-
 		} else {
 
-			
-			/* 
+			/*
 				save srv.recv info in ex an TryClientBid
 
 				send(srv.Context())
- 			*/
+			*/
 
 			//check if client is subscribed
-			_, ok := s.auctioneer.Load(bid.ClientId)
-			if !ok {
-				s.auctioneer.Store(bid.ClientId, sub{streamBid: srv, finished: fin})
-				logger.InfoLogger.Printf("Storing new client %v, in server map", bid.ClientId)
-			}
-
-			//Handle new bid - is bid higher than the last highest bid?
-			if bid.Amount > currentHighestBidder.HighestBidAmount {
-				highBidder := HighestBidder{
-					HighestBidAmount: bid.Amount,
-					HighestBidderID:  bid.ClientId,
-					streamBid:        srv,
-				}
-				currentHighestBidder = highBidder
-				logger.InfoLogger.Printf("Storing new bid %d for client %d in server map", bid.Amount, bid.ClientId)
-			}
-			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
+			addToMessageQueue(bid.ClientId, bid.Amount)
 		}
+	}
+}
+
+func addToMessageQueue(id, amount int32) {
+	messageHandle.mu.Lock()
+
+	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
+		Id:     id,
+		Amount: amount,
+	})
+
+	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
+
+	messageHandle.mu.Unlock()
+}
+
+func RecieveBidResponseFromReplicas(srv protos.AuctionhouseService_BidServer, clientId, amount int32) {
+	// wait for ackno
+	// how to get server
+	//SendBidStatusToClient(srv, clientId, amount)
+}
+
+func forwardBidToReplica(ch frontendClienthandle) {
+	logger.InfoLogger.Println("Request send to clients")
+	//implement a loop
+	for {
+
+		//loop through messages in MessageQue
+		for {
+			messageHandle.mu.Lock()
+
+			if len(messageHandle.MessageQue) == 0 {
+				messageHandle.mu.Unlock()
+				break
+			}
+			idFromClient := messageHandle.MessageQue[0].Id
+			amountFromClient := messageHandle.MessageQue[0].Amount
+
+			messageHandle.mu.Unlock()
+
+			// Send data over the gRPC stream to the client
+			if err := ch.streamBidOut.Send(&protos.BidRequest{
+				ClientId: idFromClient,
+				Amount:   amountFromClient,
+			}); err != nil {
+				logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
+				// In case of error the client would re-subscribe so close the subscriber stream
+			}
+		}
+		logger.InfoLogger.Println("Forwarding message to replicas..")
+
+		messageHandle.mu.Lock()
+
+		if len(messageHandle.MessageQue) > 1 {
+			messageHandle.MessageQue = messageHandle.MessageQue[1:] // delete the message at index 0 after sending to receiver
+		} else {
+			messageHandle.MessageQue = []message{}
+		}
+
+		messageHandle.mu.Unlock()
+		time.Sleep(1 * time.Second)
 	}
 }
 
