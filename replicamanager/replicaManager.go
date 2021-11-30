@@ -116,7 +116,7 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 	println("Mis mis")
 
 	stream.Send(bidStatus)
-	println("Miav")
+	println(currentHighestBidder.HighestBidAmount)
 
 }
 
