@@ -70,7 +70,7 @@ func Start(id int32, port string) {
 		po := scanner.Text()
 
 		frontendClientForReplica := setupFrontendConnectionToReplica(po)
-		Output(fmt.Sprintf("Frontend connected with replica on port: %v", po))
+		output(fmt.Sprintf("Frontend connected with replica on port: %v", po))
 
 		channelBid := frontendClientForReplica.setupBidStream()
 		channelResult := frontendClientForReplica.setupResultStream()
@@ -109,14 +109,14 @@ func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.Auction
 
 			//check if client is subscribed
 			addToMessageQueue(bid.ClientId, bid.Amount)
-
 		}
+		sleep()
 	}
 }
 
 //TODO
 func (s *Server) sendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
-	/*var status protos.Status
+/* 	var status protos.Status
 
 	switch {
 	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
@@ -132,8 +132,8 @@ func (s *Server) sendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 		HighestBid: currentHighestBidder.HighestBidAmount,
 	}
 
-	stream.Send(bidStatus)
-	*/
+	stream.Send(bidStatus) */
+	
 }
 
 // CLIENT - RESULT
@@ -226,27 +226,29 @@ func forwardBidToReplica(ch frontendClienthandle) {
 		}
 
 		messageHandle.mu.Unlock()
-		time.Sleep(1 * time.Second)
+		sleep()
 	}
 }
 
 func (ch *frontendClienthandle) recieveBidResponseFromReplicasAndSendToClient() {
-	for {
+	/*for {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {
-			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+			logger.ErrorLogger.Printf("Error in receiving message from replica: %v", msg)
 			connected = false
 			time.Sleep(5 * time.Second) // waiting before trying to recieve again
 		} else {
 			// FRONTEND: skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid.
 			switch msg.Status {
-			case protos.Status_NOW_HIGHEST_BIDDER:
+			case protos.Status(msg.CliendId):
+
 			case protos.Status_TOO_LOW_BID:
 			case protos.Status_EXCEPTION:
 			}
 			connected = true
 		}
-	}
+		sleep()
+	} */
 }
 
 // REPLICA - RESULT
@@ -293,16 +295,17 @@ func forwardQueryToReplica(ch frontendClienthandle) {
 func (ch *frontendClienthandle) recieveQueryResponseFromReplicaAndSendToClient() {
 	for {
 		if !connected { // To avoid sending before connected.
-			time.Sleep(1 * time.Second)
+			sleep()
 		} else {
 			response, err := ch.streamResultOut.Recv()
 			if err != nil {
 				logger.ErrorLogger.Printf("Failed to receive message: %v", err)
 			} else {
-				Output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
+				output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
 				logger.InfoLogger.Println("Succesfully recieved response from query")
 			}
 		}
+		sleep()
 	}
 }
 
@@ -396,6 +399,10 @@ func addToMessageQueue(id, amount int32) {
 	messageHandle.mu.Unlock()
 }
 
-func Output(input string) {
+func output(input string) {
 	fmt.Println(input)
+}
+
+func sleep() {
+	time.Sleep(1 * time.Second)
 }

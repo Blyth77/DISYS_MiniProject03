@@ -3,7 +3,8 @@ package server
 import (
 	"fmt"
 	"net"
-	"sync"
+	"time"
+
 	"google.golang.org/grpc"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
@@ -18,12 +19,6 @@ var (
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	auctioneer sync.Map
-}
-
-type sub struct {
-	streamBid protos.AuctionhouseService_BidServer
-	finished  chan<- bool
 }
 
 type HighestBidder struct {
@@ -52,13 +47,14 @@ func Start(id int32, po int32) {
 		}
 	}()
 
-	logger.InfoLogger.Println("mis")
-	Output(fmt.Sprintf("Replica connected on port: %v", port))
+	logger.InfoLogger.Printf("Replica%v ready for requests on port: %v\n", ID, port)
+	output(fmt.Sprintf("Replica connected on port: %v", port))
 
 	bl := make(chan bool)
 	<-bl
 }
 
+// BID
 func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	fin := make(chan bool)
 
@@ -72,15 +68,8 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 	for {
 		var bid, err = srv.Recv()
 		if err != nil {
-			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from frontend: %s", err))
+			logger.ErrorLogger.Printf("FATAL: failed to recive bid from frontend: %s", err)
 		} else {
-			//check if client is subscribed
-			_, ok := s.auctioneer.Load(bid.ClientId)
-			if !ok {
-				s.auctioneer.Store(bid.ClientId, sub{streamBid: srv, finished: fin})
-				logger.InfoLogger.Printf("Storing new client-frontend %v, in Replica map", bid.ClientId)
-			}
-
 			//Handle new bid - is bid higher than the last highest bid?
 			if bid.Amount > currentHighestBidder.HighestBidAmount {
 				highBidder := HighestBidder{
@@ -89,15 +78,17 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 					streamBid:        srv,
 				}
 				currentHighestBidder = highBidder
-				logger.InfoLogger.Printf("Storing new bid %d for frontend %d in Replica map", bid.Amount, bid.ClientId)
+				logger.InfoLogger.Printf("Recived new bid: %d from client%d", bid.Amount, bid.ClientId)
 			}
 			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 		}
+		sleep() 
 	}
 }
 
 func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
 	var status protos.Status
+	logger.InfoLogger.Printf("Responded to bid from frontend%d.", currentBidderID)
 
 	switch {
 	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
@@ -112,24 +103,21 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 		Status:     status,
 		HighestBid: currentHighestBidder.HighestBidAmount,
 	}
-	println("Mis mis")
 
 	stream.Send(bidStatus)
-	println(currentHighestBidder.HighestBidAmount)
-
+	logger.InfoLogger.Printf("Sending response to frontend%d with %v", currentBidderID, status)
 }
 
-// When time has runned out : brodcast who the winner is
+// RESULT
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
-	go s.receiveQueryForResultAndSendToClient(stream, er)
+	go s.receiveQueryFromFrontEndAndSendResponse(stream, er)
 
 	return <-er
 }
 
-// wait for a client to ask for the highest bidder and sends the result back
-func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
+func (s *Server) receiveQueryFromFrontEndAndSendResponse(srv protos.AuctionhouseService_ResultServer, er_ chan error) {
 	for {
 		_, err := srv.Recv()
 		if err != nil {
@@ -148,9 +136,15 @@ func (s *Server) receiveQueryForResultAndSendToClient(srv protos.AuctionhouseSer
 			}
 			logger.InfoLogger.Println("Query sent to frontend")
 		}
+		sleep() 
 	}
 }
 
-func Output(input string) {
+// Extensions
+func output(input string) {
 	fmt.Println(input)
+}
+
+func sleep() {
+	time.Sleep(2 * time.Second)
 }
