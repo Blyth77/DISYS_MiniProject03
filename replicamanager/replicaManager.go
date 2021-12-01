@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net"
-	"time"
 
 	"google.golang.org/grpc"
 
@@ -81,7 +80,6 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 			}
 			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 		}
-		sleep()
 	}
 }
 
@@ -133,8 +131,8 @@ func (s *Server) receiveQueryFromFrontEndAndSendResponse(srv protos.Auctionhouse
 				logger.ErrorLogger.Fatalf("FATAL: failed to send ResponseToQuery to frontend: %s", err)
 			}
 			logger.InfoLogger.Println("Query sent to frontend")
+
 		}
-		sleep()
 	}
 }
 
@@ -143,6 +141,3 @@ func output(input string) {
 	fmt.Println(input)
 }
 
-func sleep() {
-	time.Sleep(2 * time.Second)
-}

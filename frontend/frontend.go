@@ -84,7 +84,7 @@ func Start(id int32, port string) {
 		index++
 	}
 
-	numberOfReplicas = index -1
+	numberOfReplicas = index - 1
 	logger.InfoLogger.Printf("%v replicas succesfully connected.", numberOfReplicas)
 
 	bl := make(chan bool)
@@ -103,7 +103,6 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
 	for {
-
 		var bid, err = srv.Recv()
 		if err != nil {
 			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
@@ -114,6 +113,7 @@ func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.Auction
 			//check if client is subscribed
 			addToMessageQueue(bid.ClientId, bid.Amount)
 		}
+
 		result := <- bidQueue
 		srv.Send(result) 
 	}
@@ -206,6 +206,7 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 				bidFromReplicasStatus[bid.Status] = count + 1
 			}
 		}
+		println("kvæl den hund")
 
 		var highest int
 		var stat protos.Status
@@ -215,7 +216,6 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 				stat = key
 			}
 		}
-		println(stat.String())
 
 		//fmt.Printf("Front:%v\n", stat)
 		bidQueue <- &protos.StatusOfBid{
