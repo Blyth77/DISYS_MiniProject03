@@ -45,6 +45,7 @@ message QueryResult {
 // Was bid successful? 
 message StatusOfBid {
   Status status = 1;
+  int32 highestBid = 2; 
 }
 
 enum Status {

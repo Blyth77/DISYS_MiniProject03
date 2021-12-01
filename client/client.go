@@ -1,8 +1,3 @@
-/* TODO:
-- FRONTEND: recvBidStatus() - skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid.
-- UserInput: fix quit.
-*/
-
 package main
 
 import (
@@ -12,12 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-
-	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
+	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
+
+
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -36,66 +32,74 @@ type clienthandle struct {
 }
 
 func main() {
-	port := fmt.Sprintf(":%v", os.Args[1])
+	port := fmt.Sprintf(":%v",os.Args[1])
 
-	welcomeMsg()
-	setup()
+	Output(WelcomeMsg())
 
 	go frontend.Start(ID, port)
 
+   //--------------------
 	client := setupClient(port)
+	
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
 
-	logger.InfoLogger.Println(fmt.Sprintf("Client's assigned port: %v", port))
 
-	go userInput(client, channelBid, channelResult)
-	go channelResult.receiveResultResponseFromFrontEnd()
-	go channelBid.recieveBidStatusFromFrontEnd()
+	Output("Current item is: ITEM, current highest bid is: HIGHEST_BID, by client: ID") //minus
 
-	logger.InfoLogger.Println("Client setup completed")
-	output(fmt.Sprintf("Client: %v is ready for bidding", ID))
+	go UserInput(client, channelBid, channelResult) // minus
+	go channelResult.receiveFromResultStream()
+	go channelBid.recvBidStatus()
+//______________________
 
 	bl := make(chan bool)
 	<-bl
 }
 
-// BID RPC
-func sendBidRequestToFrontEnd(client AuctionClient, amountValue int32, ch clienthandle) {
-	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
-
-	err := ch.streamBidOut.Send(clientMessageBox)
-	if err != nil {
-		output("An error occured while bidding, please try again")
-		logger.WarningLogger.Printf("Error while sending message to frontend: %v", err)
-	} else {
-		logger.InfoLogger.Printf("Client id: %v has bidded %v on item", ID, amountValue)
-	}
-}
-
-func (ch *clienthandle) recieveBidStatusFromFrontEnd() {
+func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 	for {
-		msg, err := ch.streamBidOut.Recv()
-		if err != nil {
-			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
-			connected = false
-		} else {
-			switch msg.Status {
-			case protos.Status_NOW_HIGHEST_BIDDER:
-				output("We have recieved your bid! You now the highest bidder!")
-			case protos.Status_TOO_LOW_BID:
-				output("We have recieved your bid! Your bid was to low")
-			case protos.Status_EXCEPTION:
-				output("Something went wrong, bid not accepted by the auctionhouse")
+		var option string
+		var amount int32
+
+		fmt.Scanf("%s %d", &option, &amount)
+		option = strings.ToLower(option)
+		switch {
+		case option == "query":
+			if !connected {
+				Output("Please make a bid, before querying!")
+			} else {
+				result.sendQueryForResult(*client)
 			}
-			connected = true
-			logger.InfoLogger.Println(fmt.Sprintf("Client%v recieved BidStatusResponse from frontend. Status: %v", ID, msg.Status))
+		case option == "bid":
+			bid.sendBidRequest(*client, amount)
+		case option == "quit":
+			Quit(client) // Cause system to fuck up!
+		case option == "help":
+			Help()
+		default:
+			Output("Did not understand, pleasy try again. Type \"help\" for help.")
 		}
 	}
 }
 
-// RESULT RPC
-func (ch *clienthandle) sendQueryRequestResultToFrontEnd(client AuctionClient) {
+func (client *AuctionClient) setupBidStream() clienthandle {
+	streamOut, err := client.clientService.Bid(context.Background())
+	if err != nil {
+		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
+	}
+	return clienthandle{streamBidOut: streamOut}
+}
+
+func (client *AuctionClient) setupResultStream() clienthandle {
+	streamOut, err := client.clientService.Result(context.Background())
+	if err != nil {
+		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
+	}
+
+	return clienthandle{streamResultOut: streamOut}
+}
+
+func (ch *clienthandle) sendQueryForResult(client AuctionClient) {
 	queryResult := &protos.QueryResult{ClientId: ID}
 
 	logger.InfoLogger.Printf("Sending query from client %d", ID)
@@ -103,35 +107,73 @@ func (ch *clienthandle) sendQueryRequestResultToFrontEnd(client AuctionClient) {
 	err := ch.streamResultOut.Send(queryResult)
 	if err != nil {
 		logger.ErrorLogger.Printf("Error while sending result query message to server :: %v", err)
-		output("Something went wrong, please try again.")
+		Output("Something went wrong, please try again.")
 	}
 
 	logger.InfoLogger.Printf("Sending query from client %d was a succes!", ID)
 }
 
-func (ch *clienthandle) receiveResultResponseFromFrontEnd() {
+func (ch *clienthandle) receiveFromResultStream() {
 	for {
 		if !connected { // To avoid sending before connected.
-			sleep()
+			time.Sleep(1 * time.Second)
 		} else {
 			response, err := ch.streamResultOut.Recv()
 			if err != nil {
 				logger.ErrorLogger.Printf("Failed to receive message: %v", err)
 			} else {
-				output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
-				logger.InfoLogger.Println(fmt.Sprintf("Client%vSuccesfully recieved QueryResponse from frontend", ID))
+				Output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
+				logger.InfoLogger.Println("Succesfully recieved response from query")
 			}
 		}
 	}
 }
 
-// CONNECTION
+func (ch *clienthandle) sendBidRequest(client AuctionClient, amountValue int32) {
+	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
+
+	err := ch.streamBidOut.Send(clientMessageBox)
+	if err != nil {
+		Output("An error occured while bidding, please try again")
+		logger.WarningLogger.Printf("Error while sending message to server: %v", err)
+	} else {
+		logger.InfoLogger.Printf("Client id: %v has bidded %v on item", ID, amountValue)
+	}
+}
+
+// When client has sent a bid request - recieves a status message: success, fail or expection
+func (ch *clienthandle) recvBidStatus() {
+	for {
+		msg, err := ch.streamBidOut.Recv()
+		if err != nil {
+			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+			connected = false
+			time.Sleep(5 * time.Second) // waiting before trying to recieve again
+		} else {
+			// FRONTEND: skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid. 
+			switch msg.Status {
+			case protos.Status_NOW_HIGHEST_BIDDER:
+				Output(fmt.Sprintf("We have recieved your bid! You now have the highest bid: %v", msg.HighestBid))
+			case protos.Status_TOO_LOW_BID:
+				Output(fmt.Sprintf("We have recieved your bid! Your bid was to low. The highest bid: %v", msg.HighestBid))
+			case protos.Status_EXCEPTION:
+				Output("Something went wrong, bid not accepted by the auctionhouse")
+			}
+			connected = true
+		}
+	}
+}
+
+//Connects and creates client through protos.NewAuctionhouseServiceClient(connection)
 func makeClient(port string) (*AuctionClient, error) {
+
+
 	conn, err := makeConnection(port)
 	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v failed to makeConnection. Error: %v", ID, err)
 		return nil, err
 	}
+
+
 
 	return &AuctionClient{
 		clientService: protos.NewAuctionhouseServiceClient(conn),
@@ -144,89 +186,8 @@ func makeConnection(port string) (*grpc.ClientConn, error) {
 	return grpc.Dial(port, []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
 }
 
-// SETUP
-func setup() {
-	rand.Seed(time.Now().UnixNano())
-	ID = int32(rand.Intn(1e4))
-	logger.LogFileInit("client", ID)
-}
-
-func setupClient(port string) *AuctionClient {
-
-	client, err := makeClient(port)
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v setupClient failed. Error: %v", ID, err)
-	}
-	return client
-}
-
-func (client *AuctionClient) setupBidStream() clienthandle {
-	streamOut, err := client.clientService.Bid(context.Background())
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v failed to call AuctionhouseService bidStream. Error: %v", ID, err)
-	}
-	return clienthandle{streamBidOut: streamOut}
-}
-
-func (client *AuctionClient) setupResultStream() clienthandle {
-	streamOut, err := client.clientService.Result(context.Background())
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v failed to call AuctionhouseService resultStream. Error: %v", ID, err)
-	}
-	return clienthandle{streamResultOut: streamOut}
-}
-
-// EXTENSIONS
-func userInput(client *AuctionClient, bid clienthandle, result clienthandle) {
-	for {
-		var option string
-		var amount int32
-
-		fmt.Scanf("%s %d", &option, &amount)
-		option = strings.ToLower(option)
-		if option != "" || amount != 0 {
-			switch {
-			case option == "query":
-				if !connected {
-					output("Please make a bid, before querying!")
-				} else {
-					result.sendQueryRequestResultToFrontEnd(*client)
-				}
-			case option == "bid":
-				sendBidRequestToFrontEnd(*client, amount, bid)
-			case option == "quit":
-				quit(client) // Cause system to fuck up!
-			case option == "help":
-				help()
-			default:
-				logger.InfoLogger.Printf("Client%v failed to parse userinput", ID)
-				output("Did not understand, pleasy try again. Type \"help\" for help.")
-			}
-		}
-	}
-}
-
-func quit(client *AuctionClient) {
-	client.conn.Close()
-	output("Connection to server closed. Press any key to exit.\n")
-	logger.InfoLogger.Printf("Client%v is quitting the Auctionhouse", ID)
-
-	var o string
-	fmt.Scanln(&o)
-	os.Exit(3)
-}
-
-func output(input string) {
-	fmt.Println(input)
-}
-
-func sleep() {
-	time.Sleep(1 * time.Second)
-}
-
-// INFO
-func welcomeMsg() {
-	output(`
+func WelcomeMsg() string {
+	return `
 ______________________________________________________
 ======================================================
     **>>> WELCOME TO BARBETTES AUCTIONHOUSE <<<**
@@ -256,11 +217,20 @@ INPUTS
 		in the terminal, followed by enter.
 ------------------------------------------------------------------------------------------------------------------
 
-`)
+`
 }
 
-func help() {
-	output(`
+func Quit(client *AuctionClient) {
+	client.conn.Close()
+	Output("Connection to server closed. Press any key to exit.\n")
+
+	var o string
+	fmt.Scanln(&o)
+	os.Exit(3)
+}
+
+func Help() {
+	Output(`
 	This is the Auction House, here you can bid on different items.
 	A certain amount of time is set off for clients to bid on an item.
 	The time on the items are NOT displayed to the clients, so if you wanna bid do it fast.
@@ -280,4 +250,27 @@ func help() {
 				q
 			in the terminal, followed by enter.
 		`)
+}
+
+func Output(input string) {
+	fmt.Println(input)
+}
+
+func setupClient(port string) *AuctionClient {
+	setupClientID()
+
+	logger.LogFileInit("client", ID)
+
+	client, err := makeClient(port)
+	if err != nil {
+		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
+	}
+
+
+	return client
+}
+
+func setupClientID() {
+	rand.Seed(time.Now().UnixNano())
+	ID = int32(rand.Intn(1e4))
 }
