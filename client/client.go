@@ -11,7 +11,6 @@ import (
 	"os"
 	"strings"
 	"time"
-
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -49,8 +48,8 @@ func main() {
 	logger.InfoLogger.Println(fmt.Sprintf("Client's assigned port: %v", port))
 
 	go UserInput(client, channelBid, channelResult)
-	go channelResult.receiveFromResultStream()
-	go channelBid.recvBidStatus()
+	go channelResult.receiveResultResponseFromFrontEnd()
+	go channelBid.recieveBidStatusFromFrontEnd()
 
 	logger.InfoLogger.Println("Client setup completed")
 	Output(fmt.Sprintf("Client: %v is ready for bidding", ID))
@@ -60,7 +59,7 @@ func main() {
 }
 
 // BID RPC
-func sendBidRequest(client AuctionClient, amountValue int32, ch clienthandle) {
+func sendBidRequestToFrontEnd(client AuctionClient, amountValue int32, ch clienthandle) {
 	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
 
 	err := ch.streamBidOut.Send(clientMessageBox)
@@ -72,7 +71,7 @@ func sendBidRequest(client AuctionClient, amountValue int32, ch clienthandle) {
 	}
 }
 
-func (ch *clienthandle) recvBidStatus() {
+func (ch *clienthandle) recieveBidStatusFromFrontEnd() {
 	for {
 		msg, err := ch.streamBidOut.Recv()
 		if err != nil {
@@ -95,7 +94,7 @@ func (ch *clienthandle) recvBidStatus() {
 
 
 // RESULT RPC
-func (ch *clienthandle) sendQueryForResult(client AuctionClient) {
+func (ch *clienthandle) sendQueryRequestResultToFrontEnd(client AuctionClient) {
 	queryResult := &protos.QueryResult{ClientId: ID}
 
 	logger.InfoLogger.Printf("Sending query from client %d", ID)
@@ -109,7 +108,7 @@ func (ch *clienthandle) sendQueryForResult(client AuctionClient) {
 	logger.InfoLogger.Printf("Sending query from client %d was a succes!", ID)
 }
 
-func (ch *clienthandle) receiveFromResultStream() {
+func (ch *clienthandle) receiveResultResponseFromFrontEnd() {
 	for {
 		if !connected { // To avoid sending before connected.
 			time.Sleep(1 * time.Second)
@@ -195,10 +194,10 @@ func UserInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 				if !connected {
 					Output("Please make a bid, before querying!")
 				} else {
-					result.sendQueryForResult(*client)
+					result.sendQueryRequestResultToFrontEnd(*client)
 				}
 			case option == "bid":
-				sendBidRequest(*client, amount, bid)
+				sendBidRequestToFrontEnd(*client, amount, bid)
 			case option == "quit":
 				Quit(client) // Cause system to fuck up!
 			case option == "help":
