@@ -16,31 +16,40 @@ func main() {
 
 	numberOfReplicas, _ := strconv.Atoi(os.Args[1])
 	makePortListForFrontEnd(numberOfReplicas)
+	logger.InfoLogger.Println("Setting up replicas")
+
+
+	logger.InfoLogger.Printf("Number of replicas in database: %v", numberOfReplicas)
 
 	for i := 1; i <= numberOfReplicas; i++ { 
 		number := int32(i)
-		go replica.Start(number, (6000 + number))
+		port := 6000 + number
+		go replica.Start(number, port)
+		logger.InfoLogger.Printf("Replicas number: %v Port: %v started.\n", number, port )
 	}
+	logger.InfoLogger.Println("Setup replicas complete.")
 
 	bl := make(chan bool)
 	<-bl
 }
 
 func makePortListForFrontEnd(numberOfReplicas int) {
-	
 	logger.ClearLog("replicamanager/portlist")
 	logger.MakeLogFolder("replicamanager/portlist")
 
 	f, err := os.OpenFile("replicamanager/portlist/listOfReplicaPorts.txt",
 		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		//
+		logger.ErrorLogger.Fatalf("Failed to create listOfReplicaPorts.txt. Error: %v", err)
 	}
-	
 	defer f.Close()
+	
 	for i := 1; i <= numberOfReplicas; i++ {
-		if _, err := f.WriteString(fmt.Sprintf("%v\n", 6000+i)); err != nil {
-			//
+		number := 6000+i
+		if _, err := f.WriteString(fmt.Sprintf("%v\n", number))
+		err != nil {
+			logger.ErrorLogger.Fatalf("Failed to add %v listOfReplicaPorts.txt. Error: %v", number, err)
 		}
 	}
+	logger.InfoLogger.Println("Setup listOfReplicaPorts.txt complete.")
 }
