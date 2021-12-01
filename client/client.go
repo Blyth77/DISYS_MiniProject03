@@ -82,14 +82,14 @@ func (ch *clienthandle) recieveBidStatusFromFrontEnd() {
 		} else {
 			switch msg.Status {
 			case protos.Status_NOW_HIGHEST_BIDDER:
-				output(fmt.Sprintf("We have recieved your bid! You now have the highest bid: %v", msg.HighestBid))
+				output("We have recieved your bid! You now the highest bidder!")
 			case protos.Status_TOO_LOW_BID:
-				output(fmt.Sprintf("We have recieved your bid! Your bid was to low. The highest bid: %v", msg.HighestBid))
+				output("We have recieved your bid! Your bid was to low")
 			case protos.Status_EXCEPTION:
 				output("Something went wrong, bid not accepted by the auctionhouse")
 			}
 			connected = true
-			logger.InfoLogger.Println(fmt.Sprintf("Client%v recieved BidStatusResponse from frontend. Amount: %d, Status: %v", ID, msg.HighestBid, msg.Status))
+			logger.InfoLogger.Println(fmt.Sprintf("Client%v recieved BidStatusResponse from frontend. Status: %v", ID, msg.Status))
 		}
 	}
 }

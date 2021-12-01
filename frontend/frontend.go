@@ -15,22 +15,24 @@ import (
 	"math/rand"
 	"net"
 	"os"
-	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 
-	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
+	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
 )
 
 var (
-	ID        int32
-	connected bool
+	ID               int32
+	numberOfReplicas int
+	queue =  make(chan bidMessage, 10)
+	bidQueue =  make(chan *protos.StatusOfBid, 10)
 )
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
+	subscribers  map[int]frontendClienthandle
 }
 
 type frontendClientReplica struct {
@@ -43,21 +45,12 @@ type frontendClienthandle struct {
 	streamResultOut protos.AuctionhouseService_ResultClient
 }
 
-type message struct {
+type bidMessage struct {
 	Id     int32
 	Amount int32
 }
 
-type msgQueue struct {
-	MessageQue []message
-	mu         sync.Mutex
-}
-
-var messageHandle = msgQueue{}
-
-
 func Start(id int32, port string) {
-
 	go connectToClient(port) //clienten's server
 
 	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
@@ -65,20 +58,34 @@ func Start(id int32, port string) {
 
 	scanner := bufio.NewScanner(file)
 
+	index := 1
+	logger.InfoLogger.Println("Connecting to replicas.")
+	s := &Server{}
+	s.subscribers = make(map[int]frontendClienthandle)
+
+
 	for scanner.Scan() {
-		scanner.Scan()
+
 		po := scanner.Text()
+		logger.InfoLogger.Printf("Trying to connect to replica on port: %v", po)
 
 		frontendClientForReplica := setupFrontendConnectionToReplica(po)
-		output(fmt.Sprintf("Frontend connected with replica on port: %v", po))
 
-		channelBid := frontendClientForReplica.setupBidStream()
-		channelResult := frontendClientForReplica.setupResultStream()
+		frontendClienthandler := frontendClienthandle{
+			streamBidOut:    frontendClientForReplica.setupBidStream(),
+			streamResultOut: frontendClientForReplica.setupResultStream(),
+		}
 
-		go channelBid.recieveBidResponseFromReplicasAndSendToClient()
-		go channelResult.recieveQueryResponseFromReplicaAndSendToClient()
-		go forwardBidToReplica(channelBid)
+		s.subscribers[index] = frontendClienthandler
+
+		go s.recieveBidResponseFromReplicasAndSendToClient()
+		//go s.recieveQueryResponseFromReplicaAndSendToClient()
+		go s.forwardBidToReplica()
+		index++
 	}
+
+	numberOfReplicas = index -1
+	logger.InfoLogger.Printf("%v replicas succesfully connected.", numberOfReplicas)
 
 	bl := make(chan bool)
 	<-bl
@@ -96,45 +103,22 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 
 func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
 	for {
+
 		var bid, err = srv.Recv()
 		if err != nil {
 			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
 		} else {
-			/*
-				save srv.recv info in ex an TryClientBid
 
-				send(srv.Context())
-			*/
 			ID = bid.ClientId
 
 			//check if client is subscribed
 			addToMessageQueue(bid.ClientId, bid.Amount)
 		}
-		sleep()
+		result := <- bidQueue
+		srv.Send(result) 
 	}
 }
 
-//TODO
-func (s *Server) sendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
-/* 	var status protos.Status
-
-	switch {
-	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
-		status = protos.Status_NOW_HIGHEST_BIDDER
-	case currentHighestBidder.HighestBidderID != currentBidderID || currentHighestBidder.HighestBidAmount > currentBid:
-		status = protos.Status_TOO_LOW_BID
-	default:
-		status = protos.Status_EXCEPTION
-	}
-
-	bidStatus := &protos.StatusOfBid{
-		Status:     status,
-		HighestBid: currentHighestBidder.HighestBidAmount,
-	}
-
-	stream.Send(bidStatus) */
-	
-}
 
 // CLIENT - RESULT
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
@@ -190,65 +174,73 @@ func (s *Server) recieveQueryRequestFromClientAndSendToReplica(srv protos.Auctio
 }
 
 // REPLICA - BID
-func forwardBidToReplica(ch frontendClienthandle) {
+func (s *Server) forwardBidToReplica() {
 	for {
-		for {
-			messageHandle.mu.Lock()
+		message := <- queue
 
-			if len(messageHandle.MessageQue) == 0 {
-				messageHandle.mu.Unlock()
-				break
-			}
-
-			idFromClient := messageHandle.MessageQue[0].Id
-			amountFromClient := messageHandle.MessageQue[0].Amount
-
-			messageHandle.mu.Unlock()
-
-			// Send data over the gRPC stream to the client
-			if err := ch.streamBidOut.Send(&protos.BidRequest{
-				ClientId: idFromClient,
-				Amount:   amountFromClient,
-			}); err != nil {
-				logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
-				// In case of error the client would re-subscribe so close the subscriber stream
-			}
-			logger.InfoLogger.Println("Forwarding message to replicas..")
-
-		}
-
-		messageHandle.mu.Lock()
-
-		if len(messageHandle.MessageQue) > 1 {
-			messageHandle.MessageQue = messageHandle.MessageQue[1:]
-		} else {
-			messageHandle.MessageQue = []message{}
-		}
-
-		messageHandle.mu.Unlock()
-		sleep()
+		for key, element := range s.subscribers {
+			element.streamBidOut.Send(&protos.BidRequest{
+				ClientId: message.Id,
+				Amount:   message.Amount,
+			})
+			logger.InfoLogger.Printf("Forwarding message to replicas %d", key)
+		}	
 	}
+
 }
 
-func (ch *frontendClienthandle) recieveBidResponseFromReplicasAndSendToClient() {
-	/*for {
-		msg, err := ch.streamBidOut.Recv()
-		if err != nil {
-			logger.ErrorLogger.Printf("Error in receiving message from replica: %v", msg)
-			connected = false
-			time.Sleep(5 * time.Second) // waiting before trying to recieve again
-		} else {
-			// FRONTEND: skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid.
-			switch msg.Status {
-			case protos.Status(msg.CliendId):
+func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
+	for {
+		bidFromReplicasStatus := make(map[protos.Status]int)
 
-			case protos.Status_TOO_LOW_BID:
-			case protos.Status_EXCEPTION:
+		for _, element := range s.subscribers {
+			bid := element.recieveBidReplicas()
+			logger.InfoLogger.Printf("Sending BidStatusResponse from frontend%v. Status: %v", ID, bid.Status)
+			if(bid.Status == protos.Status_NOW_HIGHEST_BIDDER ) {
+				count := bidFromReplicasStatus[bid.Status] 
+				bidFromReplicasStatus[bid.Status] = count + 1
 			}
-			connected = true
+			if(bid.Status == protos.Status_TOO_LOW_BID ) {
+				count := bidFromReplicasStatus[bid.Status] 
+				bidFromReplicasStatus[bid.Status] = count + 1
+			}
 		}
-		sleep()
-	} */
+
+		var highest int
+		var stat protos.Status
+		for key, value := range bidFromReplicasStatus {
+			if (value > highest) {
+				highest = value 
+				stat = key
+			}
+		}
+
+		//fmt.Printf("Front:%v\n", stat)
+		bidQueue <- &protos.StatusOfBid{
+			Status: stat,
+		}
+
+		// MODULO - til at tjekke majority.
+		/* if (highest > (numberOfReplicas / 2)) {
+			bidQueue <- &protos.StatusOfBid{
+				Status: stat,
+			}
+		} else {
+			bidQueue <- &protos.StatusOfBid{
+				Status: protos.Status_EXCEPTION,
+			}
+		} */
+	}	
+}
+
+func (cl *frontendClienthandle) recieveBidReplicas() *protos.StatusOfBid {
+	msg, err := cl.streamBidOut.Recv()
+		if err != nil {
+			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+		} else {
+			return msg
+		}
+	return nil
 }
 
 // REPLICA - RESULT
@@ -294,7 +286,8 @@ func forwardQueryToReplica(ch frontendClienthandle) {
 
 func (ch *frontendClienthandle) recieveQueryResponseFromReplicaAndSendToClient() {
 	for {
-		if !connected { // To avoid sending before connected.
+		// channel blocker
+		/* if !connected { // To avoid sending before connected.
 			sleep()
 		} else {
 			response, err := ch.streamResultOut.Recv()
@@ -305,27 +298,26 @@ func (ch *frontendClienthandle) recieveQueryResponseFromReplicaAndSendToClient()
 				logger.InfoLogger.Println("Succesfully recieved response from query")
 			}
 		}
-		sleep()
+		sleep() */
 	}
 }
 
 // SETUP
-func (client *frontendClientReplica) setupBidStream() frontendClienthandle {
+func (client *frontendClientReplica) setupBidStream() protos.AuctionhouseService_BidClient {
 	streamOut, err := client.clientService.Bid(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
-
-	return frontendClienthandle{streamBidOut: streamOut}
+	return streamOut
 }
 
-func (frontendClient *frontendClientReplica) setupResultStream() frontendClienthandle {
+func (frontendClient *frontendClientReplica) setupResultStream() protos.AuctionhouseService_ResultClient {
 	streamOut, err := frontendClient.clientService.Result(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
 
-	return frontendClienthandle{streamResultOut: streamOut}
+	return streamOut
 }
 
 func setupFrontendConnectionToReplica(port string) *frontendClientReplica {
@@ -351,7 +343,7 @@ func makeFrontendClient(port string) (*frontendClientReplica, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	logger.InfoLogger.Printf("Has found connection to replica on port: %v\n", port)
 	return &frontendClientReplica{
 		clientService: protos.NewAuctionhouseServiceClient(conn),
 		conn:          conn,
@@ -359,7 +351,6 @@ func makeFrontendClient(port string) (*frontendClientReplica, error) {
 }
 
 func makeConnection(port string) (*grpc.ClientConn, error) {
-	logger.InfoLogger.Print("Connecting to the auctionhouse...")
 	return grpc.Dial(fmt.Sprintf(":%v", port), []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
 }
 
@@ -380,6 +371,7 @@ func connectToClient(port string) {
 			logger.ErrorLogger.Fatalf("FATAL: Server connection failed: %s", err)
 		}
 	}()
+	logger.InfoLogger.Printf("Connected to client on port: %v", port)
 
 	bl := make(chan bool)
 	<-bl
@@ -387,22 +379,11 @@ func connectToClient(port string) {
 
 // EXTENSIONS
 func addToMessageQueue(id, amount int32) {
-	messageHandle.mu.Lock()
-
-	messageHandle.MessageQue = append(messageHandle.MessageQue, message{
+	queue <- bidMessage{
 		Id:     id,
 		Amount: amount,
-	})
-
-	logger.InfoLogger.Printf("Message successfully recieved and queued: %v\n", id)
-
-	messageHandle.mu.Unlock()
+	}
+	logger.InfoLogger.Printf("Message successfully recieved and queued for client%v\n", id)
 }
 
-func output(input string) {
-	fmt.Println(input)
-}
 
-func sleep() {
-	time.Sleep(1 * time.Second)
-}

@@ -12,13 +12,13 @@ import (
 )
 
 var (
-	ID                   int32
 	currentHighestBidder = HighestBidder{}
 	// timer
 )
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
+	ID                   int32
 }
 
 type HighestBidder struct {
@@ -31,6 +31,8 @@ func Start(id int32, po int32) {
 	port := po
 
 	s := &Server{}
+	s.ID = id
+
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -47,8 +49,8 @@ func Start(id int32, po int32) {
 		}
 	}()
 
-	logger.InfoLogger.Printf("Replica%v ready for requests on port: %v\n", ID, port)
-	output(fmt.Sprintf("Replica connected on port: %v", port))
+	logger.InfoLogger.Printf("Replica%v ready for requests on port: %v\n", s.ID, port)
+	output(fmt.Sprintf("Replica%v connected on port: %v", s.ID, port))
 
 	bl := make(chan bool)
 	<-bl
@@ -86,9 +88,10 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 	}
 }
 
-func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
+func (s *Server) SendBidStatusToClient(srv protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
 	var status protos.Status
-	logger.InfoLogger.Printf("Responded to bid from frontend%d.", currentBidderID)
+	logger.InfoLogger.Printf("Sending response to frontend%d with %v", currentBidderID, status)
+
 
 	switch {
 	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
@@ -101,18 +104,20 @@ func (s *Server) SendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 
 	bidStatus := &protos.StatusOfBid{
 		Status:     status,
-		HighestBid: currentHighestBidder.HighestBidAmount,
 	}
+	println(currentHighestBidder.HighestBidAmount)
+	println(status.String())
 
-	stream.Send(bidStatus)
-	logger.InfoLogger.Printf("Sending response to frontend%d with %v", currentBidderID, status)
+
+	srv.Send(bidStatus)
+	logger.InfoLogger.Printf("Responded to bid from frontend%d.", currentBidderID)
 }
 
 // RESULT
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
-	go s.receiveQueryFromFrontEndAndSendResponse(stream, er)
+	//go s.receiveQueryFromFrontEndAndSendResponse(stream, er)
 
 	return <-er
 }
