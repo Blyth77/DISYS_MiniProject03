@@ -12,9 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-
 	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
@@ -25,9 +22,22 @@ var (
 	connected bool
 )
 
-type AuctionClient struct {
-	clientService protos.AuctionhouseServiceClient
-	conn          *grpc.ClientConn
+type frontendConnection struct {
+	bidSendChannel       chan bidMessage
+	bidRecieveChannel    chan string        // statusOfBid
+	queryChannel         chan string        // chan af struct? sender dog kun sit clientID
+	resultRecieveChannel chan resultMessage //the result or staus of the auction
+}
+
+type bidMessage struct {
+	Id     int32
+	Amount int32
+}
+type resultMessage struct {
+	auctionStatusMessage string
+	highestBid           int32
+	highestBidderID      int32
+	item                 string
 }
 
 type clienthandle struct {
@@ -43,7 +53,6 @@ func main() {
 
 	go frontend.Start(ID, port)
 
-	client := setupClient(port)
 	channelBid := client.setupBidStream()
 	channelResult := client.setupResultStream()
 
@@ -95,7 +104,7 @@ func (ch *clienthandle) recieveBidStatusFromFrontEnd() {
 }
 
 // RESULT RPC
-func (ch *clienthandle) sendQueryRequestResultToFrontEnd(client AuctionClient) {
+func (ch *clienthandle) sendQueryRequestResultToFrontEnd(queryChannel frontendConnection) {
 	queryResult := &protos.QueryResult{ClientId: ID}
 
 	logger.InfoLogger.Printf("Sending query from client %d", ID)
@@ -125,25 +134,6 @@ func (ch *clienthandle) receiveResultResponseFromFrontEnd() {
 	}
 }
 
-// CONNECTION
-func makeClient(port string) (*AuctionClient, error) {
-	conn, err := makeConnection(port)
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v failed to makeConnection. Error: %v", ID, err)
-		return nil, err
-	}
-
-	return &AuctionClient{
-		clientService: protos.NewAuctionhouseServiceClient(conn),
-		conn:          conn,
-	}, nil
-}
-
-func makeConnection(port string) (*grpc.ClientConn, error) {
-	logger.InfoLogger.Print("Connecting to the auctionhouse...")
-	return grpc.Dial(port, []grpc.DialOption{grpc.WithInsecure(), grpc.WithBlock()}...)
-}
-
 // SETUP
 func setup() {
 	rand.Seed(time.Now().UnixNano())
@@ -151,32 +141,8 @@ func setup() {
 	logger.LogFileInit("client", ID)
 }
 
-func setupClient(port string) *AuctionClient {
-
-	client, err := makeClient(port)
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v setupClient failed. Error: %v", ID, err)
-	}
-	return client
-}
-
-func (client *AuctionClient) setupBidStream() clienthandle {
-	streamOut, err := client.clientService.Bid(context.Background())
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v failed to call AuctionhouseService bidStream. Error: %v", ID, err)
-	}
-	return clienthandle{streamBidOut: streamOut}
-}
-
-func (client *AuctionClient) setupResultStream() clienthandle {
-	streamOut, err := client.clientService.Result(context.Background())
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Client%v failed to call AuctionhouseService resultStream. Error: %v", ID, err)
-	}
-	return clienthandle{streamResultOut: streamOut}
-}
-
 // EXTENSIONS
+// skal denne tage channels i stedet?
 func userInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 	for {
 		var option string
@@ -206,6 +172,7 @@ func userInput(client *AuctionClient, bid clienthandle, result clienthandle) {
 	}
 }
 
+// behøves denne?
 func quit(client *AuctionClient) {
 	client.conn.Close()
 	output("Connection to server closed. Press any key to exit.\n")
