@@ -11,14 +11,10 @@ import (
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
 )
 
-var (
-	currentHighestBidder = HighestBidder{}
-	// timer
-)
-
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
 	ID                   int32
+	currentHighestBidder HighestBidder
 }
 
 type HighestBidder struct {
@@ -31,8 +27,9 @@ func Start(id int32, po int32) {
 	port := po
 
 	s := &Server{}
-	s.ID = id
+	s.currentHighestBidder = HighestBidder{}
 
+	s.ID = id
 
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	if err != nil {
@@ -73,18 +70,18 @@ func (s *Server) RecieveBidFromClient(fin chan (bool), srv protos.AuctionhouseSe
 			logger.ErrorLogger.Printf("FATAL: failed to recive bid from frontend: %s", err)
 		} else {
 			//Handle new bid - is bid higher than the last highest bid?
-			if bid.Amount > currentHighestBidder.HighestBidAmount {
+			if bid.Amount > s.currentHighestBidder.HighestBidAmount {
 				highBidder := HighestBidder{
 					HighestBidAmount: bid.Amount,
 					HighestBidderID:  bid.ClientId,
 					streamBid:        srv,
 				}
-				currentHighestBidder = highBidder
+				s.currentHighestBidder = highBidder
 				logger.InfoLogger.Printf("Recived new bid: %d from client%d", bid.Amount, bid.ClientId)
 			}
 			s.SendBidStatusToClient(srv, bid.ClientId, bid.Amount)
 		}
-		sleep() 
+		sleep()
 	}
 }
 
@@ -92,22 +89,18 @@ func (s *Server) SendBidStatusToClient(srv protos.AuctionhouseService_BidServer,
 	var status protos.Status
 	logger.InfoLogger.Printf("Sending response to frontend%d with %v", currentBidderID, status)
 
-
 	switch {
-	case currentHighestBidder.HighestBidderID == currentBidderID && currentHighestBidder.HighestBidAmount == currentBid:
+	case s.currentHighestBidder.HighestBidderID == currentBidderID && s.currentHighestBidder.HighestBidAmount == currentBid:
 		status = protos.Status_NOW_HIGHEST_BIDDER
-	case currentHighestBidder.HighestBidderID != currentBidderID || currentHighestBidder.HighestBidAmount > currentBid:
+	case s.currentHighestBidder.HighestBidderID != currentBidderID || s.currentHighestBidder.HighestBidAmount > currentBid:
 		status = protos.Status_TOO_LOW_BID
 	default:
 		status = protos.Status_EXCEPTION
 	}
 
 	bidStatus := &protos.StatusOfBid{
-		Status:     status,
+		Status: status,
 	}
-	println(currentHighestBidder.HighestBidAmount)
-	println(status.String())
-
 
 	srv.Send(bidStatus)
 	logger.InfoLogger.Printf("Responded to bid from frontend%d.", currentBidderID)
@@ -131,8 +124,8 @@ func (s *Server) receiveQueryFromFrontEndAndSendResponse(srv protos.Auctionhouse
 
 			queryResponse := &protos.ResponseToQuery{
 				AuctionStatusMessage: "",
-				HighestBid:           currentHighestBidder.HighestBidAmount,
-				HighestBidderID:      currentHighestBidder.HighestBidderID,
+				HighestBid:           s.currentHighestBidder.HighestBidAmount,
+				HighestBidderID:      s.currentHighestBidder.HighestBidderID,
 				Item:                 "",
 			}
 			er := srv.Send(queryResponse)
@@ -141,7 +134,7 @@ func (s *Server) receiveQueryFromFrontEndAndSendResponse(srv protos.Auctionhouse
 			}
 			logger.InfoLogger.Println("Query sent to frontend")
 		}
-		sleep() 
+		sleep()
 	}
 }
 

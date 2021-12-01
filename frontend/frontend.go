@@ -188,14 +188,15 @@ func (s *Server) forwardBidToReplica() {
 	}
 
 }
-
+// Skriver
 func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 	for {
 		bidFromReplicasStatus := make(map[protos.Status]int)
 
 		for _, element := range s.subscribers {
+
 			bid := element.recieveBidReplicas()
-			logger.InfoLogger.Printf("Sending BidStatusResponse from frontend%v. Status: %v", ID, bid.Status)
+			logger.InfoLogger.Printf("Recieved BidStatusResponse from replicas. Status: %v", bid.Status)
 			if(bid.Status == protos.Status_NOW_HIGHEST_BIDDER ) {
 				count := bidFromReplicasStatus[bid.Status] 
 				bidFromReplicasStatus[bid.Status] = count + 1
@@ -214,6 +215,7 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 				stat = key
 			}
 		}
+		println(stat.String())
 
 		//fmt.Printf("Front:%v\n", stat)
 		bidQueue <- &protos.StatusOfBid{
