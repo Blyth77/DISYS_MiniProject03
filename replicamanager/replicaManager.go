@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"google.golang.org/grpc"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
-
-	"google.golang.org/grpc"
 )
 
 var (
 	ID                   int32
 	currentHighestBidder = HighestBidder{}
+	// timer
 )
 
 type Server struct {
@@ -34,7 +34,6 @@ type HighestBidder struct {
 
 func Start(id int32, po int32) {
 	port := po
-	//logger.LogFileInit("replica", id)
 
 	s := &Server{}
 

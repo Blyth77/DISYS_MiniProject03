@@ -29,7 +29,6 @@ var (
 	connected bool
 )
 
-
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
 }
@@ -55,6 +54,7 @@ type msgQueue struct {
 }
 
 var messageHandle = msgQueue{}
+
 
 func Start(id int32, port string) {
 

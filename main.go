@@ -12,6 +12,7 @@ import (
 func main() {
 	logger.ClearLog("log")
 	logger.LogFileInit("main")
+	logger.InfoLogger.Println("Setting up database")
 
 	numberOfReplicas, _ := strconv.Atoi(os.Args[1])
 	makePortListForFrontEnd(numberOfReplicas)
@@ -23,13 +24,15 @@ func main() {
 		go replica.Start(number, port)
 		logger.InfoLogger.Printf("Replicas number: %v Port: %v started.\n", number, port)
 	}
-	logger.InfoLogger.Println("Setup replicas complete.")
+	logger.InfoLogger.Println("Replicas setup complete.")
+	logger.InfoLogger.Println("Database setup complete. Ready for clients!")
 
 	bl := make(chan bool)
 	<-bl
 }
 
 func makePortListForFrontEnd(numberOfReplicas int) {
+	logger.InfoLogger.Println("Setting up listOfReplicaPorts.txt")
 	logger.ClearLog("replicamanager/portlist")
 	logger.MakeLogFolder("replicamanager/portlist")
 
@@ -46,5 +49,5 @@ func makePortListForFrontEnd(numberOfReplicas int) {
 			logger.ErrorLogger.Fatalf("Failed to add %v listOfReplicaPorts.txt. Error: %v", number, err)
 		}
 	}
-	logger.InfoLogger.Println("Setup listOfReplicaPorts.txt complete.")
+	logger.InfoLogger.Println("listOfReplicaPorts.txt setup complete.")
 }
