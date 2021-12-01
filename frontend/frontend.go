@@ -26,13 +26,13 @@ import (
 var (
 	ID               int32
 	numberOfReplicas int
-	queue =  make(chan bidMessage, 10)
-	bidQueue =  make(chan *protos.StatusOfBid, 10)
+	queue            = make(chan bidMessage, 10)
+	bidQueue         = make(chan *protos.StatusOfBid, 10)
 )
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	subscribers  map[int]frontendClienthandle
+	subscribers map[int]frontendClienthandle
 }
 
 type frontendClientReplica struct {
@@ -49,6 +49,34 @@ type bidMessage struct {
 	Id     int32
 	Amount int32
 }
+type resultMessage struct {
+	auctionStatusMessage string
+	highestBid           int32
+	highestBidderID      int32
+	item                 string
+}
+type queryMessage struct {
+	clientID int32
+}
+
+type resultChannels struct {
+	//modtager fra client
+	query chan resultMessage
+	// sender til client - behøver ikke at være en struct?
+	reponse chan queryMessage
+}
+
+// behøver ikke at være struct?
+type BidResponseMessage struct {
+	status string
+}
+
+type bidChannels struct {
+	// modtager fra Client
+	bidChan chan int32
+	// sender til Client
+	bidStatusChan chan int32
+}
 
 func Start(id int32, port string) {
 	go connectToClient(port) //clienten's server
@@ -62,7 +90,6 @@ func Start(id int32, port string) {
 	logger.InfoLogger.Println("Connecting to replicas.")
 	s := &Server{}
 	s.subscribers = make(map[int]frontendClienthandle)
-
 
 	for scanner.Scan() {
 
@@ -114,11 +141,10 @@ func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.Auction
 			addToMessageQueue(bid.ClientId, bid.Amount)
 		}
 
-		result := <- bidQueue
-		srv.Send(result) 
+		result := <-bidQueue
+		srv.Send(result)
 	}
 }
-
 
 // CLIENT - RESULT
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
@@ -176,7 +202,7 @@ func (s *Server) recieveQueryRequestFromClientAndSendToReplica(srv protos.Auctio
 // REPLICA - BID
 func (s *Server) forwardBidToReplica() {
 	for {
-		message := <- queue
+		message := <-queue
 
 		for key, element := range s.subscribers {
 			element.streamBidOut.Send(&protos.BidRequest{
@@ -184,10 +210,11 @@ func (s *Server) forwardBidToReplica() {
 				Amount:   message.Amount,
 			})
 			logger.InfoLogger.Printf("Forwarding message to replicas %d", key)
-		}	
+		}
 	}
 
 }
+
 // Skriver
 func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 	for {
@@ -197,12 +224,12 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 
 			bid := element.recieveBidReplicas()
 			logger.InfoLogger.Printf("Recieved BidStatusResponse from replicas. Status: %v", bid.Status)
-			if(bid.Status == protos.Status_NOW_HIGHEST_BIDDER ) {
-				count := bidFromReplicasStatus[bid.Status] 
+			if bid.Status == protos.Status_NOW_HIGHEST_BIDDER {
+				count := bidFromReplicasStatus[bid.Status]
 				bidFromReplicasStatus[bid.Status] = count + 1
 			}
-			if(bid.Status == protos.Status_TOO_LOW_BID ) {
-				count := bidFromReplicasStatus[bid.Status] 
+			if bid.Status == protos.Status_TOO_LOW_BID {
+				count := bidFromReplicasStatus[bid.Status]
 				bidFromReplicasStatus[bid.Status] = count + 1
 			}
 		}
@@ -211,8 +238,8 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 		var highest int
 		var stat protos.Status
 		for key, value := range bidFromReplicasStatus {
-			if (value > highest) {
-				highest = value 
+			if value > highest {
+				highest = value
 				stat = key
 			}
 		}
@@ -232,16 +259,16 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 				Status: protos.Status_EXCEPTION,
 			}
 		} */
-	}	
+	}
 }
 
 func (cl *frontendClienthandle) recieveBidReplicas() *protos.StatusOfBid {
 	msg, err := cl.streamBidOut.Recv()
-		if err != nil {
-			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
-		} else {
-			return msg
-		}
+	if err != nil {
+		logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+	} else {
+		return msg
+	}
 	return nil
 }
 
@@ -387,5 +414,3 @@ func addToMessageQueue(id, amount int32) {
 	}
 	logger.InfoLogger.Printf("Message successfully recieved and queued for client%v\n", id)
 }
-
-
