@@ -10,7 +10,6 @@ import (
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
-	main "github.com/Blyth77/DISYS_MiniProject03/client"
 
 )
 
@@ -20,10 +19,17 @@ var (
 	ResultToReplicaQueue = make(chan *protos.QueryResult, 10)
 )
 
+type FrontendConnection struct {
+	BidSendChannel    chan *protos.BidRequest
+	BidRecieveChannel chan *protos.StatusOfBid
+	QuerySendChannel     chan *protos.QueryResult
+	ResultRecieveChannel chan *protos.ResponseToQuery
+}
+
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
 	subscribers     map[int]frontendClienthandle
-	channelsHandler *main.FrontendConnection
+	channelsHandler *FrontendConnection
 }
 
 type frontendClientReplica struct {
@@ -64,10 +70,13 @@ func StartFrontend(id int32, port string, client *FrontendConnection) {
 		s.subscribers[index] = frontendClienthandler
 
 		go s.recieveBidRequestFromClient()
-
 		go s.recieveBidResponseFromReplicasAndSendToClient()
-		//go s.recieveQueryResponseFromReplicaAndSendToClient()
 		go s.forwardBidToReplica()
+
+		go s.recieveResultResponseToClient()
+		go s.recieveQueryResponseFromReplicaAndSendToClient()
+		go s.forwardQueryToReplica()
+
 		index++
 	}
 
@@ -81,20 +90,20 @@ func StartFrontend(id int32, port string, client *FrontendConnection) {
 // CLIENT - BID
 func (s *Server) recieveBidRequestFromClient() {
 	for {
-		request := <-s.channelsHandler.bidSendChannel
+		request := <-s.channelsHandler.BidSendChannel
 		addToBidQueue(request)
 	}
 }
 
-/*
+
 // CLIENT - RESULT
-func (s *Server) sendResultResponseToClient() {
+func (s *Server) recieveResultResponseToClient() {
 	for {
-		request := <-s.channelsHandler.querySendChannel
+		request := <-s.channelsHandler.QuerySendChannel
 		addToResultQueue(request)
 	}
 }
-*/
+
 // REPLICA - BID
 func (s *Server) forwardBidToReplica() {
 	for {
@@ -105,38 +114,19 @@ func (s *Server) forwardBidToReplica() {
 			logger.InfoLogger.Printf("Forwarding message to replicas %d", key)
 		}
 	}
-
 }
 
 func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 	for {
-		bidFromReplicasStatus := make(map[protos.Status]int)
+		// Missing checking for majority
+		var bid *protos.StatusOfBid
 
 		for _, element := range s.subscribers {
-
-			bid := element.recieveBidReplicas()
-			logger.InfoLogger.Printf("Recieved BidStatusResponse from replicas. Status: %v", bid.Status)
-			if bid.Status == protos.Status_NOW_HIGHEST_BIDDER {
-				count := bidFromReplicasStatus[bid.Status]
-				bidFromReplicasStatus[bid.Status] = count + 1
-			}
-			if bid.Status == protos.Status_TOO_LOW_BID {
-				count := bidFromReplicasStatus[bid.Status]
-				bidFromReplicasStatus[bid.Status] = count + 1
-			}
+			bid = element.recieveBidReplicas()
 		}
 
-		var highest int
-		var stat protos.Status
-		for key, value := range bidFromReplicasStatus {
-			if value > highest {
-				highest = value
-				stat = key
-			}
-		}
-
-		s.channelsHandler.bidRecieveChannel <- &protos.StatusOfBid{
-			Status: stat,
+		s.channelsHandler.BidRecieveChannel <- &protos.StatusOfBid{
+			Status: bid.Status,
 		}
 	}
 }
@@ -151,66 +141,43 @@ func (cl *frontendClienthandle) recieveBidReplicas() *protos.StatusOfBid {
 	return nil
 }
 
-/*
+
 // REPLICA - RESULT
-func forwardQueryToReplica(ch frontendClienthandle) {
-	/* for {
-		for {
-			messageHandle.mu.Lock()
-
-			if len(messageHandle.MessageQue) == 0 {
-				messageHandle.mu.Unlock()
-				break
-			}
-
-			idFromClient := messageHandle.MessageQue[0].Id
-			amountFromClient := messageHandle.MessageQue[0].Amount
-
-			messageHandle.mu.Unlock()
-
-			// Send data over the gRPC stream to the client
-			if err := ch.streamBidOut.Send(&protos.BidRequest{
-				ClientId: idFromClient,
-				Amount:   amountFromClient,
-			}); err != nil {
-				logger.ErrorLogger.Output(2, (fmt.Sprintf("Failed to send data to client: %v", err)))
-				// In case of error the client would re-subscribe so close the subscriber stream
-			}
-			logger.InfoLogger.Println("Forwarding message to replicas..")
-
-		}
-
-		messageHandle.mu.Lock()
-
-		if len(messageHandle.MessageQue) > 1 {
-			messageHandle.MessageQue = messageHandle.MessageQue[1:]
-		} else {
-			messageHandle.MessageQue = []message{}
-		}
-
-		messageHandle.mu.Unlock()
-		time.Sleep(1 * time.Second)
-	}
-}
-*/
-/* func (ch *frontendClienthandle) recieveQueryResponseFromReplicaAndSendToClient() {
+func (s *Server) forwardQueryToReplica() {
 	for {
-		// channel blocker
-		/* if !connected { // To avoid sending before connected.
-			sleep()
-		} else {
-			response, err := ch.streamResultOut.Recv()
-			if err != nil {
-				logger.ErrorLogger.Printf("Failed to receive message: %v", err)
-			} else {
-				output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
-				logger.InfoLogger.Println("Succesfully recieved response from query")
-			}
+		message := <-ResultToReplicaQueue
+
+		for key, element := range s.subscribers {
+			element.streamResultOut.Send(message)
+			logger.InfoLogger.Printf("Forwarding message to replicas %d", key)
 		}
-		sleep()
 	}
 }
-*/
+
+func (s *Server) recieveQueryResponseFromReplicaAndSendToClient() {
+	for {
+		// Missing checking for majority
+		var result *protos.ResponseToQuery
+
+		for _, element := range s.subscribers {
+			result = element.recieveResultReplicas()
+		}
+
+
+		s.channelsHandler.ResultRecieveChannel <- result
+	}
+}
+
+func (cl *frontendClienthandle) recieveResultReplicas() *protos.ResponseToQuery {
+	msg, err := cl.streamResultOut.Recv()
+	if err != nil {
+		logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+	} else {
+		return msg
+	}
+	return nil
+}
+
 
 // SETUP
 func (client *frontendClientReplica) setupBidStream() protos.AuctionhouseService_BidClient {
@@ -263,8 +230,7 @@ func addToBidQueue(bidReq *protos.BidRequest) {
 	logger.InfoLogger.Printf("Message successfully recieved and queued for client%v\n", bidReq.ClientId)
 }
 
-/*
 func addToResultQueue(resultReq *protos.QueryResult) {
 	ResultToReplicaQueue <- resultReq
 	logger.InfoLogger.Printf("Message successfully recieved and queued for client%v\n", resultReq.ClientId)
-} */
+} 

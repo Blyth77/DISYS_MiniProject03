@@ -108,7 +108,7 @@ func (s *Server) SendBidStatusToClient(srv protos.AuctionhouseService_BidServer,
 func (s *Server) Result(stream protos.AuctionhouseService_ResultServer) error {
 	er := make(chan error)
 
-	//go s.receiveQueryFromFrontEndAndSendResponse(stream, er)
+	go s.receiveQueryFromFrontEndAndSendResponse(stream, er)
 
 	return <-er
 }

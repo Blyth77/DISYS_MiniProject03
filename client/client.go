@@ -7,42 +7,34 @@ import (
 	"strings"
 	"time"
 
+	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
-	frontend "github.com/Blyth77/DISYS_MiniProject03/frontend"
-
 )
 
 var (
 	ID int32
 )
 
-type FrontendConnection struct {
-	bidSendChannel    chan *protos.BidRequest
-	bidRecieveChannel chan *protos.StatusOfBid
-	//querySendChannel     chan *protos.QueryResult
-	//resultRecieveChannel chan *protos.ResponseToQuery
-}
-
 func main() {
 	port := fmt.Sprintf(":%v", os.Args[1])
 
 	welcomeMsg()
 	setup()
-	client := &FrontendConnection{}
+	client := &frontend.FrontendConnection{}
 
-	client.bidSendChannel = make(chan *protos.BidRequest)
-	client.bidRecieveChannel = make(chan *protos.StatusOfBid)
-	//client.querySendChannel = make(chan *protos.QueryResult)
-	//client.resultRecieveChannel = make(chan *protos.ResponseToQuery)
+	client.BidSendChannel = make(chan *protos.BidRequest)
+	client.BidRecieveChannel = make(chan *protos.StatusOfBid)
+	client.QuerySendChannel = make(chan *protos.QueryResult)
+	client.ResultRecieveChannel = make(chan *protos.ResponseToQuery)
 
 	go frontend.StartFrontend(ID, port, client)
 
 	logger.InfoLogger.Println(fmt.Sprintf("Client's assigned port: %v", port))
 
-	go client.userInput()
-	go client.receiveResultResponseFromFrontEnd()
-	go client.recieveBidStatusFromFrontEnd()
+	go userInput(client)
+	go receiveResultResponseFromFrontEnd(client)
+	go recieveBidStatusFromFrontEnd(client)
 
 	logger.InfoLogger.Println("Client setup completed")
 	output(fmt.Sprintf("Client: %v is ready for bidding", ID))
@@ -52,18 +44,17 @@ func main() {
 }
 
 // BID RPC
-func (ch *FrontendConnection) sendBidRequestToFrontEnd(amountValue int32) {
+func sendBidRequestToFrontEnd(ch *frontend.FrontendConnection, amountValue int32) {
 	clientMessageBox := &protos.BidRequest{ClientId: ID, Amount: amountValue}
 
-	ch.bidSendChannel <- clientMessageBox
+	ch.BidSendChannel <- clientMessageBox
 	logger.InfoLogger.Printf("Client id: %v has bidded %v on item", ID, amountValue)
 
 }
 
-// tog clienthandle før
-func (ch *FrontendConnection) recieveBidStatusFromFrontEnd() {
+func recieveBidStatusFromFrontEnd(ch *frontend.FrontendConnection) {
 	for {
-		bidStatus := <-ch.bidRecieveChannel
+		bidStatus := <-ch.BidRecieveChannel
 
 		switch bidStatus.Status {
 		case protos.Status_NOW_HIGHEST_BIDDER:
@@ -79,21 +70,21 @@ func (ch *FrontendConnection) recieveBidStatusFromFrontEnd() {
 }
 
 // RESULT RPC
-func (ch *FrontendConnection) sendQueryRequestResultToFrontEnd() {
-	//queryResult := &protos.QueryResult{ClientId: ID}
+func sendQueryRequestResultToFrontEnd(ch *frontend.FrontendConnection) {
+	queryResult := &protos.QueryResult{ClientId: ID}
 
 	logger.InfoLogger.Printf("Sending query from client %d", ID)
 
-	//ch.querySendChannel <- queryResult
+	ch.QuerySendChannel <- queryResult
 
 	logger.InfoLogger.Printf("Sending query from client %d was a succes!", ID)
 }
 
-func (ch *FrontendConnection) receiveResultResponseFromFrontEnd() {
+func receiveResultResponseFromFrontEnd(ch *frontend.FrontendConnection) {
 	for {
-		//response := <-ch.resultRecieveChannel
+		response := <-ch.ResultRecieveChannel
 
-		//output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
+		output(fmt.Sprintf("Current highest bid: %v from clientID: %v", response.HighestBid, response.HighestBidderID))
 		logger.InfoLogger.Println(fmt.Sprintf("Client%vSuccesfully recieved QueryResponse from frontend", ID))
 
 	}
@@ -107,8 +98,7 @@ func setup() {
 }
 
 // EXTENSIONS
-// skal denne tage channels i stedet?
-func (ch *FrontendConnection) userInput() {
+func userInput(ch *frontend.FrontendConnection) {
 	for {
 		var option string
 		var amount int32
@@ -118,9 +108,9 @@ func (ch *FrontendConnection) userInput() {
 		if option != "" || amount != 0 {
 			switch {
 			case option == "query":
-				ch.sendQueryRequestResultToFrontEnd()
+				sendQueryRequestResultToFrontEnd(ch)
 			case option == "bid":
-				ch.sendBidRequestToFrontEnd(amount)
+				sendBidRequestToFrontEnd(ch, amount)
 			case option == "quit":
 				quit() // Cause system to fuck up!
 			case option == "help":
@@ -133,10 +123,11 @@ func (ch *FrontendConnection) userInput() {
 	}
 }
 
-// behøves denne?
 func quit() {
 	output("Connection to server closed. Press any key to exit.\n")
 	logger.InfoLogger.Printf("Client%v is quitting the Auctionhouse", ID)
+
+	// missing safe close of connections in frontend
 
 	var o string
 	fmt.Scanln(&o)
