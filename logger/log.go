@@ -60,7 +60,6 @@ func checkIfExist(name string) bool {
     return !os.IsNotExist(err)
 }
 
-
 func MakeLogFolder(name string) {
     err := os.Mkdir(fmt.Sprintf("%v", name), os.ModePerm)
     if err != nil {

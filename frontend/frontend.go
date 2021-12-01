@@ -1,7 +1,5 @@
 /* TODO:
 - FRONTEND: recvBidStatus() - skal vente på majority har acknowledged og svaret, før den godtager at de har gemt bid.
-- Lav ikke nyt id
-- Fix børnelokker
 - Hvorfor grr katter den kun 2,5 gange
 - HVORFOR KØRER LOOPSNE SÅ MANGE GANGE!!!!
 - Når frontend modtager 5 forskellige svar fra fem replicas,
@@ -20,16 +18,17 @@ import (
 	"sync"
 	"time"
 
-	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
-	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
-
 	"google.golang.org/grpc"
+
+	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
+	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 )
 
 var (
 	ID        int32
 	connected bool
 )
+
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
@@ -58,6 +57,7 @@ type msgQueue struct {
 var messageHandle = msgQueue{}
 
 func Start(id int32, port string) {
+
 	go connectToClient(port) //clienten's server
 
 	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
@@ -69,7 +69,7 @@ func Start(id int32, port string) {
 		scanner.Scan()
 		po := scanner.Text()
 
-		frontendClientForReplica := setupFrontend(po)
+		frontendClientForReplica := setupFrontendConnectionToReplica(po)
 		Output(fmt.Sprintf("Frontend connected with replica on port: %v", po))
 
 		channelBid := frontendClientForReplica.setupBidStream()
@@ -94,6 +94,26 @@ func (s *Server) Bid(stream protos.AuctionhouseService_BidServer) error {
 	return <-bl
 }
 
+func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
+	for {
+		var bid, err = srv.Recv()
+		if err != nil {
+			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
+		} else {
+			/*
+				save srv.recv info in ex an TryClientBid
+
+				send(srv.Context())
+			*/
+			ID = bid.ClientId
+
+			//check if client is subscribed
+			addToMessageQueue(bid.ClientId, bid.Amount)
+
+		}
+	}
+}
+
 //TODO
 func (s *Server) sendBidStatusToClient(stream protos.AuctionhouseService_BidServer, currentBidderID int32, currentBid int32) {
 	/*var status protos.Status
@@ -114,26 +134,6 @@ func (s *Server) sendBidStatusToClient(stream protos.AuctionhouseService_BidServ
 
 	stream.Send(bidStatus)
 	*/
-}
-
-func (s *Server) recieveBidRequestFromClient(fin chan (bool), srv protos.AuctionhouseService_BidServer) {
-	for {
-		// får client id + amount
-		var bid, err = srv.Recv()
-		if err != nil {
-			logger.ErrorLogger.Println(fmt.Sprintf("FATAL: failed to recive bid from client: %s", err))
-		} else {
-			/*
-				save srv.recv info in ex an TryClientBid
-
-				send(srv.Context())
-			*/
-
-			//check if client is subscribed
-			addToMessageQueue(bid.ClientId, bid.Amount)
-
-		}
-	}
 }
 
 // CLIENT - RESULT
@@ -325,10 +325,8 @@ func (frontendClient *frontendClientReplica) setupResultStream() frontendClienth
 	return frontendClienthandle{streamResultOut: streamOut}
 }
 
-func setupFrontend(port string) *frontendClientReplica {
+func setupFrontendConnectionToReplica(port string) *frontendClientReplica {
 	setupFClientReplicaID()
-
-	logger.LogFileInit("frontend", ID)
 
 	frontendClient, err := makeFrontendClient(port)
 

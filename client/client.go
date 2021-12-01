@@ -38,6 +38,7 @@ func main() {
 	port := fmt.Sprintf(":%v", os.Args[1])
 
 	Output(WelcomeMsg())
+	setup()
 
 	go frontend.Start(ID, port)
 
@@ -146,21 +147,19 @@ func makeConnection(port string) (*grpc.ClientConn, error) {
 
 
 // SETUP
-func setupClient(port string) *AuctionClient {
-	setupClientID()
-
+func setup() {
+	rand.Seed(time.Now().UnixNano())
+	ID = int32(rand.Intn(1e4))
 	logger.LogFileInit("client", ID)
+}
+
+func setupClient(port string) *AuctionClient {
 
 	client, err := makeClient(port)
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Client%v setupClient failed. Error: %v", ID, err)
 	}
 	return client
-}
-
-func setupClientID() {
-	rand.Seed(time.Now().UnixNano())
-	ID = int32(rand.Intn(1e4))
 }
 
 func (client *AuctionClient) setupBidStream() clienthandle {
