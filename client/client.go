@@ -24,7 +24,7 @@ var (
 
 type frontendConnection struct {
 	bidSendChannel       chan bidMessage
-	bidRecieveChannel    chan string        // statusOfBid
+	bidRecieveChannel    chan string        // statusOfBid - skal det være protos
 	queryChannel         chan string        // chan af struct? sender dog kun sit clientID
 	resultRecieveChannel chan resultMessage //the result or staus of the auction
 }
@@ -38,11 +38,6 @@ type resultMessage struct {
 	highestBid           int32
 	highestBidderID      int32
 	item                 string
-}
-
-type clienthandle struct {
-	streamBidOut    protos.AuctionhouseService_BidClient
-	streamResultOut protos.AuctionhouseService_ResultClient
 }
 
 func main() {
@@ -82,13 +77,15 @@ func sendBidRequestToFrontEnd(client AuctionClient, amountValue int32, ch client
 	}
 }
 
-func (ch *clienthandle) recieveBidStatusFromFrontEnd() {
+// tog clienthandle før
+func (frontConnection *frontendConnection) recieveBidStatusFromFrontEnd() {
 	for {
-		msg, err := ch.streamBidOut.Recv()
+		bidStatus := <-frontConnection.bidRecieveChannel
 		if err != nil {
 			logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
 			connected = false
 		} else {
+			// skal ændres
 			switch msg.Status {
 			case protos.Status_NOW_HIGHEST_BIDDER:
 				output("We have recieved your bid! You now the highest bidder!")
