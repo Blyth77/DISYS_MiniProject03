@@ -16,13 +16,14 @@ To add more run the clean_logs.go with N as argument. N being the number of avai
 Start-up instructions:
 -------------------------------------------------------------
 START UP REPLICA: start by running N number of replicas from different terminals:
-         - go run replicamanager/replicaManager.go <PORT> 
-         - go run replicamanager/replicaManager.go <6001> 
-         - go run replicamanager/replicaManager.go <6002> 
-         .
-         .
-         - go run replicamanager/replicaManager.go <6000 + N> 
-          (only the number "6001" as an argument, no ":", and only one replica on each port)
+        
+    - go run replicamanager/replicaManager.go <PORT> 
+    - go run replicamanager/replicaManager.go <6001> 
+    - go run replicamanager/replicaManager.go <6002> 
+    .
+    .
+    - go run replicamanager/replicaManager.go <6000 + N> 
+    (only the number "6001" as an argument, no ":", and only one replica on each port)
 
 NEXT: Follow the instructions, and initiate an auction, by choosing an item and a timespan (seconds):
 
@@ -33,11 +34,13 @@ NEXT: Follow the instructions, and initiate an auction, by choosing an item and 
 This configuration must be done on EVERY REPLICA! The auction won't start before a client puts in the first bid, so there is plenty of time to do this. If the messages are not identical, unexpected results will follow! 
 
 When the replica is running, there are two options:
+   
     - Type "kill" to simulate a failure. 
     - Type "new" to start a new auction (cannot be done before the previous auction is finished).
 
 -------------------------------------------------------------
 START UP CLIENT: When the replicas are in auction-mode (have an item and a timespan), we can start up N number of clients:
+   
     - go run client/client.go <PORT>
     - go run client/client.go 3001
     ...
@@ -45,6 +48,7 @@ START UP CLIENT: When the replicas are in auction-mode (have an item and a times
     (Use any ports (replica ports excluded), no repetitions)
 
 OPTIONS:
+    
     Type "bid <amount>"   ex. "bid 100" to bid 100.
     Type "query"  to se current highest bidder. It will also show if the auction has finished.
     Type "quit" to exit. 
