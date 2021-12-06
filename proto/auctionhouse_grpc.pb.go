@@ -18,12 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AuctionhouseServiceClient interface {
-	// result: send stream of qmgs bc client can ask at any point of time
-	// what the highest bid in the round is.
-	//prints winner when time runs out to all clients.
 	Result(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_ResultClient, error)
-	// First call to Bid registers the auctioners
-	// Bidders can bid several times, but a bid must be higher than the previous one(s)
 	Bid(ctx context.Context, opts ...grpc.CallOption) (AuctionhouseService_BidClient, error)
 }
 
@@ -101,12 +96,7 @@ func (x *auctionhouseServiceBidClient) Recv() (*StatusOfBid, error) {
 // All implementations must embed UnimplementedAuctionhouseServiceServer
 // for forward compatibility
 type AuctionhouseServiceServer interface {
-	// result: send stream of qmgs bc client can ask at any point of time
-	// what the highest bid in the round is.
-	//prints winner when time runs out to all clients.
 	Result(AuctionhouseService_ResultServer) error
-	// First call to Bid registers the auctioners
-	// Bidders can bid several times, but a bid must be higher than the previous one(s)
 	Bid(AuctionhouseService_BidServer) error
 	mustEmbedUnimplementedAuctionhouseServiceServer()
 }

@@ -9,18 +9,9 @@ package proto;
 option go_package = "./proto"; 
 
 service AuctionhouseService {
-  // result: send stream of qmgs bc client can ask at any point of time
-  // what the highest bid in the round is.
-  //prints winner when time runs out to all clients.
   rpc Result(stream QueryResult) returns (stream ResponseToQuery) {}
-
-  // First call to Bid registers the auctioners
-  // Bidders can bid several times, but a bid must be higher than the previous one(s)
-  rpc Bid(stream BidRequest) returns (stream StatusOfBid) {} // Broadcast -- subcribe - server -> client via msgQueue
+  rpc Bid(stream BidRequest) returns (stream StatusOfBid) {} 
 }
-
-// ack =  given a bid, returns an outcome among fail, success or exception
-
 
 // Send a new bid + subscribing
 message BidRequest {
@@ -28,8 +19,6 @@ message BidRequest {
   int32 amount = 2;
 }
 
-
-// Highest bidder info - highest bid, and bidder 
 message ResponseToQuery {
   string auctionStatusMessage = 1;
   int32 highestBid = 2; 
@@ -37,12 +26,10 @@ message ResponseToQuery {
   string item = 4;
 }
 
-// Message for prompting asking for highest bidder
 message QueryResult {
   int32 clientId = 1;
 }
 
-// Was bid successful? 
 message StatusOfBid {
   Status status = 1;
 }
@@ -51,5 +38,6 @@ enum Status {
   NOW_HIGHEST_BIDDER = 0;
   TOO_LOW_BID = 1;
   EXCEPTION = 2;
+  FINISHED = 3;
+  NEW = 4;
 }
-

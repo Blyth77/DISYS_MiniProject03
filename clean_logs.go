@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
-	replica "github.com/Blyth77/DISYS_MiniProject03/replicamanager"
 )
 
 func main() {
@@ -18,17 +17,6 @@ func main() {
 	makePortListForFrontEnd(numberOfReplicas)
 	logger.InfoLogger.Printf("Setting up replicas. Number of replicas in database: %v\n", numberOfReplicas)
 
-	for i := 1; i <= numberOfReplicas; i++ {
-		number := int32(i)
-		port := 6000 + number
-		go replica.Start(number, port)
-		logger.InfoLogger.Printf("Replicas number: %v Port: %v started.\n", number, port)
-	}
-	logger.InfoLogger.Println("Replicas setup complete.")
-	logger.InfoLogger.Println("Database setup complete. Ready for clients!")
-
-	bl := make(chan bool)
-	<-bl
 }
 
 func makePortListForFrontEnd(numberOfReplicas int) {

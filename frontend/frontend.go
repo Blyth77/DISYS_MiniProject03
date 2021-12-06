@@ -10,26 +10,23 @@ import (
 
 	logger "github.com/Blyth77/DISYS_MiniProject03/logger"
 	protos "github.com/Blyth77/DISYS_MiniProject03/proto"
-
-)
-
-var (
-	numberOfReplicas     int
-	bidToReplicaQueue    = make(chan *protos.BidRequest, 10)
-	ResultToReplicaQueue = make(chan *protos.QueryResult, 10)
 )
 
 type FrontendConnection struct {
-	BidSendChannel    chan *protos.BidRequest
-	BidRecieveChannel chan *protos.StatusOfBid
+	BidSendChannel       chan *protos.BidRequest
+	BidRecieveChannel    chan *protos.StatusOfBid
 	QuerySendChannel     chan *protos.QueryResult
 	ResultRecieveChannel chan *protos.ResponseToQuery
+	QuitChannel          chan bool
 }
 
 type Server struct {
 	protos.UnimplementedAuctionhouseServiceServer
-	subscribers     map[int]frontendClienthandle
-	channelsHandler *FrontendConnection
+	replicas             map[int]frontendClienthandle
+	channelsHandler      *FrontendConnection
+	bidMajority          map[protos.Status]int
+	bidToReplicaQueue    chan *protos.BidRequest
+	resultToReplicaQueue chan *protos.QueryResult
 }
 
 type frontendClientReplica struct {
@@ -43,181 +40,234 @@ type frontendClienthandle struct {
 }
 
 func StartFrontend(id int32, port string, client *FrontendConnection) {
-
-	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
-	index := 1
 	logger.InfoLogger.Println("Connecting to replicas.")
 	s := &Server{}
-	s.channelsHandler = client
-	s.subscribers = make(map[int]frontendClienthandle)
+	s.setupServer(client)
 
-	for scanner.Scan() {
+	go s.connectingToServer()
+	go s.recieveBidRequestFromClient()
+	go s.forwardBidToReplica()
+	go s.recieveResultResponseAndSendToClient()
+	go s.forwardQueryToReplica()
 
-		po := scanner.Text()
-		logger.InfoLogger.Printf("Trying to connect to replica on port: %v", po)
-
-		frontendClientForReplica := setupFrontendConnectionToReplica(po)
-
-		frontendClienthandler := frontendClienthandle{
-			streamBidOut:    frontendClientForReplica.setupBidStream(),
-			streamResultOut: frontendClientForReplica.setupResultStream(),
-		}
-
-		s.subscribers[index] = frontendClienthandler
-
-		go s.recieveBidRequestFromClient()
-		go s.recieveBidResponseFromReplicasAndSendToClient()
-		go s.forwardBidToReplica()
-
-		go s.recieveResultResponseToClient()
-		go s.recieveQueryResponseFromReplicaAndSendToClient()
-		go s.forwardQueryToReplica()
-
-		index++
-	}
-
-	numberOfReplicas = index - 1
-	logger.InfoLogger.Printf("%v replicas succesfully connected.", numberOfReplicas)
-
-	bl := make(chan bool)
-	<-bl
+	go client.closing(s)
+	<-client.QuitChannel
+	logger.InfoLogger.Println("Closing frontend.")
 }
 
 // CLIENT - BID
 func (s *Server) recieveBidRequestFromClient() {
 	for {
 		request := <-s.channelsHandler.BidSendChannel
-		addToBidQueue(request)
+		if request == nil {
+			break
+		}
+		s.addToBidQueue(request)
 	}
 }
 
-
 // CLIENT - RESULT
-func (s *Server) recieveResultResponseToClient() {
+func (s *Server) recieveResultResponseAndSendToClient() {
 	for {
 		request := <-s.channelsHandler.QuerySendChannel
-		addToResultQueue(request)
+		if request == nil {
+			break
+		}
+		s.addToResultQueue(request)
 	}
 }
 
 // REPLICA - BID
 func (s *Server) forwardBidToReplica() {
 	for {
-		message := <-bidToReplicaQueue
+		message := <-s.bidToReplicaQueue
 
-		for key, element := range s.subscribers {
+		for key, element := range s.replicas {
 			element.streamBidOut.Send(message)
-			logger.InfoLogger.Printf("Forwarding message to replicas %d", key)
+			logger.InfoLogger.Printf("Forwarding message to replicas%d. CliendID: %v Amount: %d  ", key, message.ClientId, message.Amount)
 		}
+		s.recieveBidResponseFromReplicasAndSendToClient()
 	}
 }
 
 func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
-	for {
-		// Missing checking for majority
-		var bid *protos.StatusOfBid
+	for key, element := range s.replicas {
+		bid, err := element.recieveBidReplicas()
+		if err != nil {
+			element.streamResultOut.CloseSend()
+			element.streamBidOut.CloseSend()
 
-		for _, element := range s.subscribers {
-			bid = element.recieveBidReplicas()
+			delete(s.replicas, key)
+			logger.InfoLogger.Printf("Removed failed replica: replica%v!", key)
+			continue
 		}
+		s.fillMajorityList(bid.Status)
+	}
 
-		s.channelsHandler.BidRecieveChannel <- &protos.StatusOfBid{
-			Status: bid.Status,
+	s.channelsHandler.BidRecieveChannel <- &protos.StatusOfBid{
+		Status: s.checkMajority(),
+	}
+	s.clearMajorityValues()
+}
+
+func (s *Server) clearMajorityValues() {
+	for k := range s.bidMajority {
+		s.bidMajority[k] = 0
+	}
+}
+
+func (s *Server) fillMajorityList(bid protos.Status) {
+	for k := range s.bidMajority {
+		if bid == k {
+			s.bidMajority[k] = s.bidMajority[k] + 1
 		}
 	}
 }
 
-func (cl *frontendClienthandle) recieveBidReplicas() *protos.StatusOfBid {
+func (s *Server) checkMajority() protos.Status {
+	var finalBid protos.Status
+	var count int
+
+	for k, v := range s.bidMajority {
+		if v > count {
+			finalBid = k
+			count = v
+		}
+	}
+	return finalBid
+}
+
+func (cl *frontendClienthandle) recieveBidReplicas() (*protos.StatusOfBid, error) {
 	msg, err := cl.streamBidOut.Recv()
 	if err != nil {
-		logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+		logger.ErrorLogger.Printf("Error in receiving message from server")
+		return &protos.StatusOfBid{
+			Status: protos.Status_EXCEPTION,
+		}, err
 	} else {
-		return msg
+		logger.InfoLogger.Printf("Receiving message from server: %v", msg.Status.String())
+		return msg, err
 	}
-	return nil
 }
-
 
 // REPLICA - RESULT
 func (s *Server) forwardQueryToReplica() {
 	for {
-		message := <-ResultToReplicaQueue
+		message := <-s.resultToReplicaQueue
 
-		for key, element := range s.subscribers {
+		for key, element := range s.replicas {
 			element.streamResultOut.Send(message)
 			logger.InfoLogger.Printf("Forwarding message to replicas %d", key)
 		}
+		s.recieveQueryResponseFromReplicaAndSendToClient()
 	}
 }
 
 func (s *Server) recieveQueryResponseFromReplicaAndSendToClient() {
-	for {
-		// Missing checking for majority
-		var result *protos.ResponseToQuery
+	var result *protos.ResponseToQuery
 
-		for _, element := range s.subscribers {
-			result = element.recieveResultReplicas()
+	// majority
+	for _, element := range s.replicas {
+		result = element.recieveResultReplicas()
+		if result == nil {
+			element.streamResultOut.CloseSend()
+			element.streamBidOut.CloseSend()
+		} else {
+			s.channelsHandler.ResultRecieveChannel <- result
+			break
 		}
-
-
-		s.channelsHandler.ResultRecieveChannel <- result
 	}
 }
 
 func (cl *frontendClienthandle) recieveResultReplicas() *protos.ResponseToQuery {
 	msg, err := cl.streamResultOut.Recv()
 	if err != nil {
-		logger.ErrorLogger.Printf("Error in receiving message from server: %v", msg)
+		logger.ErrorLogger.Printf("Error in receiving message from server")
+		return nil
 	} else {
 		return msg
 	}
-	return nil
 }
 
-
 // SETUP
-func (client *frontendClientReplica) setupBidStream() protos.AuctionhouseService_BidClient {
+func (client *frontendClientReplica) setupBidStream() (protos.AuctionhouseService_BidClient, error) {
 	streamOut, err := client.clientService.Bid(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
-	return streamOut
+	return streamOut, err
 }
 
-func (frontendClient *frontendClientReplica) setupResultStream() protos.AuctionhouseService_ResultClient {
+func (frontendClient *frontendClientReplica) setupResultStream() (protos.AuctionhouseService_ResultClient, error) {
 	streamOut, err := frontendClient.clientService.Result(context.Background())
 	if err != nil {
 		logger.ErrorLogger.Fatalf("Failed to call AuctionhouseService: %v", err)
 	}
 
-	return streamOut
+	return streamOut, err
 }
 
-func setupFrontendConnectionToReplica(port string) *frontendClientReplica {
-	frontendClient, err := makeFrontendClient(port)
+func (s *Server) setupServer(client *FrontendConnection) {
+	s.channelsHandler = client
+	s.replicas = make(map[int]frontendClienthandle)
+	s.bidMajority = make(map[protos.Status]int)
+	s.bidToReplicaQueue = make(chan *protos.BidRequest, 10)
+	s.resultToReplicaQueue = make(chan *protos.QueryResult, 10)
+	s.setupMajority()
+}
 
-	if err != nil {
-		logger.ErrorLogger.Fatalf("Failed to make Client: %v", err)
-	}
+func (s *Server) setupMajority() {
+	s.bidMajority[protos.Status_NOW_HIGHEST_BIDDER] = 0
+	s.bidMajority[protos.Status_TOO_LOW_BID] = 0
+	s.bidMajority[protos.Status_EXCEPTION] = 0
+	s.bidMajority[protos.Status_FINISHED] = 0
+	s.bidMajority[protos.Status_NEW] = 0
 
-	return frontendClient
 }
 
 // CONNECTION
-func makeFrontendClient(port string) (*frontendClientReplica, error) {
+func (s *Server) connectingToServer() {
+	file, _ := os.Open("replicamanager/portlist/listOfReplicaPorts.txt")
+	defer file.Close()
+	index := 0
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		po := scanner.Text()
+		logger.InfoLogger.Printf("Trying to connect to replica on port: %v", po)
+
+		frontendClientForReplica := setupFrontendConnectionToReplica(po)
+
+		bidStream, err := frontendClientForReplica.setupBidStream()
+		if err != nil {
+			continue
+		}
+		resultStream, err := frontendClientForReplica.setupResultStream()
+		if err != nil {
+			continue
+		}
+
+		frontendClienthandler := frontendClienthandle{
+			streamBidOut:    bidStream,
+			streamResultOut: resultStream,
+		}
+
+		s.replicas[index] = frontendClienthandler
+		index++
+	}
+}
+
+func setupFrontendConnectionToReplica(port string) *frontendClientReplica {
 	conn, err := makeConnection(port)
 	if err != nil {
-		return nil, err
+		logger.InfoLogger.Printf("Failed to connect to replica on port: %v", port)
+		return nil
 	}
 	logger.InfoLogger.Printf("Has found connection to replica on port: %v\n", port)
 	return &frontendClientReplica{
 		clientService: protos.NewAuctionhouseServiceClient(conn),
 		conn:          conn,
-	}, nil
+	}
 }
 
 func makeConnection(port string) (*grpc.ClientConn, error) {
@@ -225,12 +275,20 @@ func makeConnection(port string) (*grpc.ClientConn, error) {
 }
 
 // EXTENSIONS
-func addToBidQueue(bidReq *protos.BidRequest) {
-	bidToReplicaQueue <- bidReq
-	logger.InfoLogger.Printf("Message successfully recieved and queued for client%v\n", bidReq.ClientId)
+func (s *Server) addToBidQueue(bidReq *protos.BidRequest) {
+	s.bidToReplicaQueue <- bidReq
+	logger.InfoLogger.Printf("BidMessage successfully recieved and queued from client%v\n", bidReq.ClientId)
 }
 
-func addToResultQueue(resultReq *protos.QueryResult) {
-	ResultToReplicaQueue <- resultReq
-	logger.InfoLogger.Printf("Message successfully recieved and queued for client%v\n", resultReq.ClientId)
-} 
+func (s *Server) addToResultQueue(resultReq *protos.QueryResult) {
+	s.resultToReplicaQueue <- resultReq
+	logger.InfoLogger.Printf("ResultMessage successfully recieved and queued from client%v\n", resultReq.ClientId)
+}
+
+func (ch *FrontendConnection) closing(s *Server) {
+	<-ch.QuitChannel
+	for _, conn := range s.replicas {
+		conn.streamBidOut.CloseSend()
+		conn.streamResultOut.CloseSend()
+	}
+}
