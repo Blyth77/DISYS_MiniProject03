@@ -4,11 +4,11 @@
 NOTE: 
 The clean_log.go can be run to clean the log folders. To run it, give it an argument N. N being the number of replicas you wish the client's to "know", this is hardcoded to a list all clients know. THIS IS NOT PART OF THE SYSTEM, only a helper program (We know it is violating the definition of distributed systems! The program can be used without it!)
 
-If clean_logs is not run, 4 replica ports will be available by default:
-    - port:  6001,
-             6002,
-             6003,
-             6004
+    If clean_logs is not run, 4 replica ports will be available by default:
+        - port:  6001,
+                 6002,
+                 6003,
+                 6004
 
 To add more run the clean_logs.go with N as argument. N being the number of available ports. NOTE: not all ports needs to be used for the program to work. Only 2 are required to test the program!
 
@@ -16,13 +16,13 @@ To add more run the clean_logs.go with N as argument. N being the number of avai
 Start-up instructions:
 -------------------------------------------------------------
 START UP REPLICA: start by running N number of replicas from different terminals:
-    - go run replicamanager/replicaManager.go <PORT> 
-    - go run replicamanager/replicaManager.go <6001> 
-    - go run replicamanager/replicaManager.go <6002> 
-    .
-    .
-    - go run replicamanager/replicaManager.go <6000 + N> 
-    (only the number "6001" as an argument, no ":", and only one replica on each port)
+         - go run replicamanager/replicaManager.go <PORT> 
+         - go run replicamanager/replicaManager.go <6001> 
+         - go run replicamanager/replicaManager.go <6002> 
+         .
+         .
+         - go run replicamanager/replicaManager.go <6000 + N> 
+          (only the number "6001" as an argument, no ":", and only one replica on each port)
 
 NEXT: Follow the instructions, and initiate an auction, by choosing an item and a timespan (seconds):
 
