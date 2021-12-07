@@ -1,0 +1,475 @@
+*** REPLICA 1 ***
+======================================================
+INFO: 2021/12/07 14:10:12 replicaManager.go:42: Replica3593 ready for requests on port: 6002 AuctionTime: 0
+INFO: 2021/12/07 14:10:17 replicaManager.go:89: Starting auction for cat. Time: 50
+INFO: 2021/12/07 14:11:07 replicaManager.go:124: Recived new bid: 100 from client3558
+INFO: 2021/12/07 14:11:08 replicaManager.go:242: Time: 49
+INFO: 2021/12/07 14:11:09 replicaManager.go:242: Time: 48
+INFO: 2021/12/07 14:11:10 replicaManager.go:242: Time: 47
+INFO: 2021/12/07 14:11:11 replicaManager.go:242: Time: 46
+INFO: 2021/12/07 14:11:12 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:11:12 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:12 replicaManager.go:242: Time: 45
+INFO: 2021/12/07 14:11:13 replicaManager.go:242: Time: 44
+INFO: 2021/12/07 14:11:14 replicaManager.go:242: Time: 43
+INFO: 2021/12/07 14:11:15 replicaManager.go:242: Time: 42
+INFO: 2021/12/07 14:11:16 replicaManager.go:242: Time: 41
+INFO: 2021/12/07 14:11:17 replicaManager.go:242: Time: 40
+INFO: 2021/12/07 14:11:18 replicaManager.go:242: Time: 39
+INFO: 2021/12/07 14:11:19 replicaManager.go:124: Recived new bid: 1000 from client830
+INFO: 2021/12/07 14:11:19 replicaManager.go:242: Time: 38
+INFO: 2021/12/07 14:11:20 replicaManager.go:242: Time: 37
+INFO: 2021/12/07 14:11:21 replicaManager.go:242: Time: 36
+INFO: 2021/12/07 14:11:22 replicaManager.go:242: Time: 35
+INFO: 2021/12/07 14:11:23 replicaManager.go:242: Time: 34
+INFO: 2021/12/07 14:11:24 replicaManager.go:242: Time: 33
+INFO: 2021/12/07 14:11:25 replicaManager.go:242: Time: 32
+INFO: 2021/12/07 14:11:26 replicaManager.go:242: Time: 31
+INFO: 2021/12/07 14:11:27 replicaManager.go:242: Time: 30
+INFO: 2021/12/07 14:11:27 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:11:27 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:28 replicaManager.go:242: Time: 29
+INFO: 2021/12/07 14:11:29 replicaManager.go:242: Time: 28
+INFO: 2021/12/07 14:11:30 replicaManager.go:242: Time: 27
+INFO: 2021/12/07 14:11:31 replicaManager.go:242: Time: 26
+INFO: 2021/12/07 14:11:32 replicaManager.go:242: Time: 25
+INFO: 2021/12/07 14:11:33 replicaManager.go:242: Time: 24
+INFO: 2021/12/07 14:11:34 replicaManager.go:242: Time: 23
+INFO: 2021/12/07 14:11:35 replicaManager.go:242: Time: 22
+INFO: 2021/12/07 14:11:36 replicaManager.go:242: Time: 21
+INFO: 2021/12/07 14:11:37 replicaManager.go:242: Time: 20
+INFO: 2021/12/07 14:11:38 replicaManager.go:242: Time: 19
+INFO: 2021/12/07 14:11:39 replicaManager.go:242: Time: 18
+INFO: 2021/12/07 14:11:40 replicaManager.go:242: Time: 17
+INFO: 2021/12/07 14:11:41 replicaManager.go:124: Recived new bid: 10000 from client3558
+INFO: 2021/12/07 14:11:41 replicaManager.go:242: Time: 16
+INFO: 2021/12/07 14:11:42 replicaManager.go:242: Time: 15
+INFO: 2021/12/07 14:11:43 replicaManager.go:242: Time: 14
+INFO: 2021/12/07 14:11:44 replicaManager.go:242: Time: 13
+INFO: 2021/12/07 14:11:45 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:11:45 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:45 replicaManager.go:242: Time: 12
+INFO: 2021/12/07 14:11:46 replicaManager.go:242: Time: 11
+INFO: 2021/12/07 14:11:47 replicaManager.go:242: Time: 10
+INFO: 2021/12/07 14:11:48 replicaManager.go:242: Time: 9
+INFO: 2021/12/07 14:11:49 replicaManager.go:242: Time: 8
+INFO: 2021/12/07 14:11:50 replicaManager.go:242: Time: 7
+INFO: 2021/12/07 14:11:51 replicaManager.go:242: Time: 6
+INFO: 2021/12/07 14:11:52 replicaManager.go:242: Time: 5
+INFO: 2021/12/07 14:11:53 replicaManager.go:242: Time: 4
+INFO: 2021/12/07 14:11:54 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:11:54 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:54 replicaManager.go:242: Time: 3
+INFO: 2021/12/07 14:11:55 replicaManager.go:242: Time: 2
+INFO: 2021/12/07 14:11:56 replicaManager.go:242: Time: 1
+INFO: 2021/12/07 14:11:57 replicaManager.go:242: Time: 0
+INFO: 2021/12/07 14:11:57 replicaManager.go:245: Auction finished
+INFO: 2021/12/07 14:11:59 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:11:59 replicaManager.go:198: Query "FINISHED" sent to frontend
+INFO: 2021/12/07 14:12:05 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:12:05 replicaManager.go:198: Query "FINISHED" sent to frontend
+INFO: 2021/12/07 14:12:38 replicaManager.go:89: Starting auction for dog. Time: 50
+INFO: 2021/12/07 14:12:38 replicaManager.go:66: Initiating new auction with: Item: dog, Duration: 50
+INFO: 2021/12/07 14:12:46 replicaManager.go:124: Recived new bid: 100 from client3558
+INFO: 2021/12/07 14:12:47 replicaManager.go:242: Time: 49
+INFO: 2021/12/07 14:12:48 replicaManager.go:242: Time: 48
+INFO: 2021/12/07 14:12:49 replicaManager.go:242: Time: 47
+INFO: 2021/12/07 14:12:49 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:12:49 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:12:50 replicaManager.go:242: Time: 46
+INFO: 2021/12/07 14:12:51 replicaManager.go:242: Time: 45
+INFO: 2021/12/07 14:12:52 replicaManager.go:242: Time: 44
+INFO: 2021/12/07 14:12:53 replicaManager.go:242: Time: 43
+INFO: 2021/12/07 14:12:54 replicaManager.go:242: Time: 42
+INFO: 2021/12/07 14:12:55 replicaManager.go:242: Time: 41
+INFO: 2021/12/07 14:12:55 replicaManager.go:124: Recived new bid: 200 from client830
+INFO: 2021/12/07 14:12:56 replicaManager.go:242: Time: 40
+INFO: 2021/12/07 14:12:57 replicaManager.go:242: Time: 39
+INFO: 2021/12/07 14:12:58 replicaManager.go:242: Time: 38
+INFO: 2021/12/07 14:12:59 replicaManager.go:242: Time: 37
+INFO: 2021/12/07 14:12:59 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:12:59 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:13:00 replicaManager.go:242: Time: 36
+INFO: 2021/12/07 14:13:01 replicaManager.go:242: Time: 35
+INFO: 2021/12/07 14:13:02 replicaManager.go:242: Time: 34
+INFO: 2021/12/07 14:13:03 replicaManager.go:242: Time: 33
+INFO: 2021/12/07 14:13:04 replicaManager.go:242: Time: 32
+INFO: 2021/12/07 14:13:05 replicaManager.go:242: Time: 31
+INFO: 2021/12/07 14:13:06 replicaManager.go:242: Time: 30
+INFO: 2021/12/07 14:13:07 replicaManager.go:242: Time: 29
+INFO: 2021/12/07 14:13:08 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:13:08 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:13:08 replicaManager.go:242: Time: 28
+INFO: 2021/12/07 14:13:09 replicaManager.go:242: Time: 27
+INFO: 2021/12/07 14:13:10 replicaManager.go:242: Time: 26
+INFO: 2021/12/07 14:13:11 replicaManager.go:242: Time: 25
+INFO: 2021/12/07 14:13:12 replicaManager.go:242: Time: 24
+INFO: 2021/12/07 14:13:13 replicaManager.go:242: Time: 23
+INFO: 2021/12/07 14:13:14 replicaManager.go:242: Time: 22
+INFO: 2021/12/07 14:13:15 replicaManager.go:242: Time: 21
+INFO: 2021/12/07 14:13:16 replicaManager.go:242: Time: 20
+INFO: 2021/12/07 14:13:17 replicaManager.go:242: Time: 19
+INFO: 2021/12/07 14:13:18 replicaManager.go:242: Time: 18
+INFO: 2021/12/07 14:13:19 replicaManager.go:242: Time: 17
+INFO: 2021/12/07 14:13:19 replicaManager.go:56: Exit successfull. Server closing...
+
+---------------
+Output:
+---------------
+Replica7487 connected on port: 6001
+Please enter an item and a timespan(seconds) for the auction:
+- cat 50
+Starting auction for cat. Time: 50
+- new    
+Please enter an item and a timespan(seconds) for the auction:
+- dog 50
+Starting auction for dog. Time: 50
+Initiating new auction with: Item: dog, Duration: 50
+
+
+*** REPLICA 2 ***
+======================================================
+INFO: 2021/12/07 14:10:12 replicaManager.go:42: Replica3593 ready for requests on port: 6002 AuctionTime: 0
+INFO: 2021/12/07 14:10:17 replicaManager.go:89: Starting auction for cat. Time: 50
+INFO: 2021/12/07 14:11:07 replicaManager.go:124: Recived new bid: 100 from client3558
+INFO: 2021/12/07 14:11:08 replicaManager.go:242: Time: 49
+INFO: 2021/12/07 14:11:09 replicaManager.go:242: Time: 48
+INFO: 2021/12/07 14:11:10 replicaManager.go:242: Time: 47
+INFO: 2021/12/07 14:11:11 replicaManager.go:242: Time: 46
+INFO: 2021/12/07 14:11:12 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:11:12 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:12 replicaManager.go:242: Time: 45
+INFO: 2021/12/07 14:11:13 replicaManager.go:242: Time: 44
+INFO: 2021/12/07 14:11:14 replicaManager.go:242: Time: 43
+INFO: 2021/12/07 14:11:15 replicaManager.go:242: Time: 42
+INFO: 2021/12/07 14:11:16 replicaManager.go:242: Time: 41
+INFO: 2021/12/07 14:11:17 replicaManager.go:242: Time: 40
+INFO: 2021/12/07 14:11:18 replicaManager.go:242: Time: 39
+INFO: 2021/12/07 14:11:19 replicaManager.go:124: Recived new bid: 1000 from client830
+INFO: 2021/12/07 14:11:19 replicaManager.go:242: Time: 38
+INFO: 2021/12/07 14:11:20 replicaManager.go:242: Time: 37
+INFO: 2021/12/07 14:11:21 replicaManager.go:242: Time: 36
+INFO: 2021/12/07 14:11:22 replicaManager.go:242: Time: 35
+INFO: 2021/12/07 14:11:23 replicaManager.go:242: Time: 34
+INFO: 2021/12/07 14:11:24 replicaManager.go:242: Time: 33
+INFO: 2021/12/07 14:11:25 replicaManager.go:242: Time: 32
+INFO: 2021/12/07 14:11:26 replicaManager.go:242: Time: 31
+INFO: 2021/12/07 14:11:27 replicaManager.go:242: Time: 30
+INFO: 2021/12/07 14:11:27 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:11:27 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:28 replicaManager.go:242: Time: 29
+INFO: 2021/12/07 14:11:29 replicaManager.go:242: Time: 28
+INFO: 2021/12/07 14:11:30 replicaManager.go:242: Time: 27
+INFO: 2021/12/07 14:11:31 replicaManager.go:242: Time: 26
+INFO: 2021/12/07 14:11:32 replicaManager.go:242: Time: 25
+INFO: 2021/12/07 14:11:33 replicaManager.go:242: Time: 24
+INFO: 2021/12/07 14:11:34 replicaManager.go:242: Time: 23
+INFO: 2021/12/07 14:11:35 replicaManager.go:242: Time: 22
+INFO: 2021/12/07 14:11:36 replicaManager.go:242: Time: 21
+INFO: 2021/12/07 14:11:37 replicaManager.go:242: Time: 20
+INFO: 2021/12/07 14:11:38 replicaManager.go:242: Time: 19
+INFO: 2021/12/07 14:11:39 replicaManager.go:242: Time: 18
+INFO: 2021/12/07 14:11:40 replicaManager.go:242: Time: 17
+INFO: 2021/12/07 14:11:41 replicaManager.go:124: Recived new bid: 10000 from client3558
+INFO: 2021/12/07 14:11:41 replicaManager.go:242: Time: 16
+INFO: 2021/12/07 14:11:42 replicaManager.go:242: Time: 15
+INFO: 2021/12/07 14:11:43 replicaManager.go:242: Time: 14
+INFO: 2021/12/07 14:11:44 replicaManager.go:242: Time: 13
+INFO: 2021/12/07 14:11:45 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:11:45 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:45 replicaManager.go:242: Time: 12
+INFO: 2021/12/07 14:11:46 replicaManager.go:242: Time: 11
+INFO: 2021/12/07 14:11:47 replicaManager.go:242: Time: 10
+INFO: 2021/12/07 14:11:48 replicaManager.go:242: Time: 9
+INFO: 2021/12/07 14:11:49 replicaManager.go:242: Time: 8
+INFO: 2021/12/07 14:11:50 replicaManager.go:242: Time: 7
+INFO: 2021/12/07 14:11:51 replicaManager.go:242: Time: 6
+INFO: 2021/12/07 14:11:52 replicaManager.go:242: Time: 5
+INFO: 2021/12/07 14:11:53 replicaManager.go:242: Time: 4
+INFO: 2021/12/07 14:11:54 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:11:54 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:11:54 replicaManager.go:242: Time: 3
+INFO: 2021/12/07 14:11:55 replicaManager.go:242: Time: 2
+INFO: 2021/12/07 14:11:56 replicaManager.go:242: Time: 1
+INFO: 2021/12/07 14:11:57 replicaManager.go:242: Time: 0
+INFO: 2021/12/07 14:11:57 replicaManager.go:245: Auction finished
+INFO: 2021/12/07 14:11:59 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:11:59 replicaManager.go:198: Query "FINISHED" sent to frontend
+INFO: 2021/12/07 14:12:05 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:12:05 replicaManager.go:198: Query "FINISHED" sent to frontend
+INFO: 2021/12/07 14:12:38 replicaManager.go:89: Starting auction for dog. Time: 50
+INFO: 2021/12/07 14:12:38 replicaManager.go:66: Initiating new auction with: Item: dog, Duration: 50
+INFO: 2021/12/07 14:12:46 replicaManager.go:124: Recived new bid: 100 from client3558
+INFO: 2021/12/07 14:12:47 replicaManager.go:242: Time: 49
+INFO: 2021/12/07 14:12:48 replicaManager.go:242: Time: 48
+INFO: 2021/12/07 14:12:49 replicaManager.go:242: Time: 47
+INFO: 2021/12/07 14:12:49 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:12:49 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:12:50 replicaManager.go:242: Time: 46
+INFO: 2021/12/07 14:12:51 replicaManager.go:242: Time: 45
+INFO: 2021/12/07 14:12:52 replicaManager.go:242: Time: 44
+INFO: 2021/12/07 14:12:53 replicaManager.go:242: Time: 43
+INFO: 2021/12/07 14:12:54 replicaManager.go:242: Time: 42
+INFO: 2021/12/07 14:12:55 replicaManager.go:242: Time: 41
+INFO: 2021/12/07 14:12:55 replicaManager.go:124: Recived new bid: 200 from client830
+INFO: 2021/12/07 14:12:56 replicaManager.go:242: Time: 40
+INFO: 2021/12/07 14:12:57 replicaManager.go:242: Time: 39
+INFO: 2021/12/07 14:12:58 replicaManager.go:242: Time: 38
+INFO: 2021/12/07 14:12:59 replicaManager.go:242: Time: 37
+INFO: 2021/12/07 14:12:59 replicaManager.go:162: Query recieved from frontend830
+INFO: 2021/12/07 14:12:59 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:13:00 replicaManager.go:242: Time: 36
+INFO: 2021/12/07 14:13:01 replicaManager.go:242: Time: 35
+INFO: 2021/12/07 14:13:02 replicaManager.go:242: Time: 34
+INFO: 2021/12/07 14:13:03 replicaManager.go:242: Time: 33
+INFO: 2021/12/07 14:13:04 replicaManager.go:242: Time: 32
+INFO: 2021/12/07 14:13:05 replicaManager.go:242: Time: 31
+INFO: 2021/12/07 14:13:06 replicaManager.go:242: Time: 30
+INFO: 2021/12/07 14:13:07 replicaManager.go:242: Time: 29
+INFO: 2021/12/07 14:13:08 replicaManager.go:162: Query recieved from frontend3558
+INFO: 2021/12/07 14:13:08 replicaManager.go:174: Query "MSG" sent to frontend 
+INFO: 2021/12/07 14:13:08 replicaManager.go:242: Time: 28
+INFO: 2021/12/07 14:13:09 replicaManager.go:242: Time: 27
+INFO: 2021/12/07 14:13:10 replicaManager.go:242: Time: 26
+INFO: 2021/12/07 14:13:11 replicaManager.go:242: Time: 25
+INFO: 2021/12/07 14:13:12 replicaManager.go:242: Time: 24
+INFO: 2021/12/07 14:13:13 replicaManager.go:242: Time: 23
+INFO: 2021/12/07 14:13:14 replicaManager.go:242: Time: 22
+INFO: 2021/12/07 14:13:15 replicaManager.go:242: Time: 21
+INFO: 2021/12/07 14:13:16 replicaManager.go:242: Time: 20
+INFO: 2021/12/07 14:13:17 replicaManager.go:242: Time: 19
+INFO: 2021/12/07 14:13:18 replicaManager.go:242: Time: 18
+INFO: 2021/12/07 14:13:19 replicaManager.go:242: Time: 17
+// KILLED
+INFO: 2021/12/07 14:13:19 replicaManager.go:56: Exit successfull. Server closing...
+
+---------------
+Output:
+---------------
+Replica3593 connected on port: 6002
+Please enter an item and a timespan(seconds) for the auction:
+cat 50  
+Starting auction for cat. Time: 50
+dog 50
+new
+Please enter an item and a timespan(seconds) for the auction:
+dog 50
+Starting auction for dog. Time: 50
+Initiating new auction with: Item: dog, Duration: 50
+kill
+Replica dying... 
+Exit successfull
+exit status 3
+
+*** CLIENT 1 ***
+======================================================
+INFO: 2021/12/07 14:11:01 client.go:32: Client's assigned port: :3001
+INFO: 2021/12/07 14:11:01 client.go:38: Client setup completed
+INFO: 2021/12/07 14:11:01 frontend.go:43: Connecting to replicas.
+INFO: 2021/12/07 14:11:01 frontend.go:210: Trying to connect to replica on port: 6001
+INFO: 2021/12/07 14:11:01 frontend.go:239: Has found connection to replica on port: 6001
+INFO: 2021/12/07 14:11:01 frontend.go:210: Trying to connect to replica on port: 6002
+INFO: 2021/12/07 14:11:01 frontend.go:239: Has found connection to replica on port: 6002
+INFO: 2021/12/07 14:11:01 frontend.go:210: Trying to connect to replica on port: 6003
+INFO: 2021/12/07 14:11:12 client.go:77: Sending query from client 830
+INFO: 2021/12/07 14:11:12 client.go:80: Sending query from client 830 was a succes!
+INFO: 2021/12/07 14:11:12 frontend.go:258: ResultMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:11:12 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:11:12 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:11:12 client.go:93: Client830 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:11:19 client.go:50: Client id: 830 has bidded 1000 on item
+INFO: 2021/12/07 14:11:19 frontend.go:253: BidMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:11:19 frontend.go:87: Forwarding message to replicas0. CliendID: 830 Amount: 1000  
+INFO: 2021/12/07 14:11:19 frontend.go:87: Forwarding message to replicas1. CliendID: 830 Amount: 1000  
+INFO: 2021/12/07 14:11:19 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:19 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:19 client.go:69: Client830 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:54 client.go:77: Sending query from client 830
+INFO: 2021/12/07 14:11:54 client.go:80: Sending query from client 830 was a succes!
+INFO: 2021/12/07 14:11:54 frontend.go:258: ResultMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:11:54 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:11:54 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:11:54 client.go:93: Client830 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:11:59 client.go:77: Sending query from client 830
+INFO: 2021/12/07 14:11:59 client.go:80: Sending query from client 830 was a succes!
+INFO: 2021/12/07 14:11:59 frontend.go:258: ResultMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:11:59 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:11:59 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:11:59 client.go:89: Auction finished
+INFO: 2021/12/07 14:12:55 client.go:50: Client id: 830 has bidded 200 on item
+INFO: 2021/12/07 14:12:55 frontend.go:253: BidMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:12:55 frontend.go:87: Forwarding message to replicas0. CliendID: 830 Amount: 200  
+INFO: 2021/12/07 14:12:55 frontend.go:87: Forwarding message to replicas1. CliendID: 830 Amount: 200  
+INFO: 2021/12/07 14:12:55 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:12:55 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:12:55 client.go:69: Client830 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:12:59 client.go:77: Sending query from client 830
+INFO: 2021/12/07 14:12:59 client.go:80: Sending query from client 830 was a succes!
+INFO: 2021/12/07 14:12:59 frontend.go:258: ResultMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:12:59 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:12:59 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:12:59 client.go:93: Client830 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:13:22 client.go:50: Client id: 830 has bidded 300 on item
+INFO: 2021/12/07 14:13:22 frontend.go:253: BidMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:13:22 frontend.go:87: Forwarding message to replicas0. CliendID: 830 Amount: 300  
+INFO: 2021/12/07 14:13:22 frontend.go:87: Forwarding message to replicas1. CliendID: 830 Amount: 300  
+INFO: 2021/12/07 14:13:22 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+ERROR: 2021/12/07 14:13:22 frontend.go:116: Error in receiving message from server
+INFO: 2021/12/07 14:13:22 frontend.go:101: Removed failed replica: replica1!
+INFO: 2021/12/07 14:13:22 client.go:69: Client830 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:13:25 client.go:77: Sending query from client 830
+INFO: 2021/12/07 14:13:25 client.go:80: Sending query from client 830 was a succes!
+INFO: 2021/12/07 14:13:25 frontend.go:258: ResultMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:13:25 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:13:25 client.go:93: Client830 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:13:44 frontend.go:253: BidMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:13:44 client.go:50: Client id: 830 has bidded 100000 on item
+INFO: 2021/12/07 14:13:44 frontend.go:87: Forwarding message to replicas0. CliendID: 830 Amount: 100000  
+INFO: 2021/12/07 14:13:44 frontend.go:121: Receiving message from server: FINISHED
+INFO: 2021/12/07 14:13:49 client.go:77: Sending query from client 830
+INFO: 2021/12/07 14:13:49 client.go:80: Sending query from client 830 was a succes!
+INFO: 2021/12/07 14:13:49 frontend.go:258: ResultMessage successfully recieved and queued from client830
+INFO: 2021/12/07 14:13:49 frontend.go:133: Forwarding message to replicas 0
+
+---------------
+Output:
+---------------
+Client: 3558 is ready for bidding
+- bid 100
+We have recieved your bid! You now the highest bidder!
+- query
+Current highest bid: 1000 from clientID: 830 on cat. Time left: 29
+- bid 100
+We have recieved your bid! Your bid was to low
+- bid 10000
+We have recieved your bid! You now the highest bidder!
+- query
+Current highest bid: 10000 from clientID: 3558 on cat. Time left: 12
+- query
+Auction finished. ClientID: 3558 won cat with highest bid: 10000
+- bid 100
+We have recieved your bid! You now the highest bidder!
+- query
+Current highest bid: 100 from clientID: 3558 on dog. Time left: 46
+- query
+Current highest bid: 200 from clientID: 830 on dog. Time left: 28
+- query
+Current highest bid: 300 from clientID: 830 on dog. Time left: 6
+- bid 400
+We have recieved your bid! You now the highest bidder!
+- query
+Auction finished. ClientID: 3558 won dog with highest bid: 400
+
+
+*** CLIENT 2 ***
+======================================================
+INFO: 2021/12/07 14:10:40 client.go:32: Client's assigned port: :3000
+INFO: 2021/12/07 14:10:40 client.go:38: Client setup completed
+INFO: 2021/12/07 14:10:40 frontend.go:43: Connecting to replicas.
+INFO: 2021/12/07 14:10:40 frontend.go:210: Trying to connect to replica on port: 6001
+INFO: 2021/12/07 14:10:40 frontend.go:239: Has found connection to replica on port: 6001
+INFO: 2021/12/07 14:10:40 frontend.go:210: Trying to connect to replica on port: 6002
+INFO: 2021/12/07 14:10:40 frontend.go:239: Has found connection to replica on port: 6002
+INFO: 2021/12/07 14:10:40 frontend.go:210: Trying to connect to replica on port: 6003
+INFO: 2021/12/07 14:11:07 client.go:50: Client id: 3558 has bidded 100 on item
+INFO: 2021/12/07 14:11:07 frontend.go:253: BidMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:11:07 frontend.go:87: Forwarding message to replicas0. CliendID: 3558 Amount: 100  
+INFO: 2021/12/07 14:11:07 frontend.go:87: Forwarding message to replicas1. CliendID: 3558 Amount: 100  
+INFO: 2021/12/07 14:11:07 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:07 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:07 client.go:69: Client3558 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:27 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:11:27 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:11:27 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:11:27 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:11:27 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:11:27 client.go:93: Client3558 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:11:36 client.go:50: Client id: 3558 has bidded 100 on item
+INFO: 2021/12/07 14:11:36 frontend.go:253: BidMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:11:36 frontend.go:87: Forwarding message to replicas0. CliendID: 3558 Amount: 100  
+INFO: 2021/12/07 14:11:36 frontend.go:87: Forwarding message to replicas1. CliendID: 3558 Amount: 100  
+INFO: 2021/12/07 14:11:36 frontend.go:121: Receiving message from server: TOO_LOW_BID
+INFO: 2021/12/07 14:11:36 frontend.go:121: Receiving message from server: TOO_LOW_BID
+INFO: 2021/12/07 14:11:36 client.go:69: Client3558 recieved BidStatusResponse from frontend. Status: TOO_LOW_BID
+INFO: 2021/12/07 14:11:41 client.go:50: Client id: 3558 has bidded 10000 on item
+INFO: 2021/12/07 14:11:41 frontend.go:253: BidMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:11:41 frontend.go:87: Forwarding message to replicas0. CliendID: 3558 Amount: 10000  
+INFO: 2021/12/07 14:11:41 frontend.go:87: Forwarding message to replicas1. CliendID: 3558 Amount: 10000  
+INFO: 2021/12/07 14:11:41 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:41 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:41 client.go:69: Client3558 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:11:45 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:11:45 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:11:45 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:11:45 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:11:45 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:11:45 client.go:93: Client3558 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:12:05 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:12:05 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:12:05 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:12:05 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:12:05 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:12:05 client.go:89: Auction finished
+INFO: 2021/12/07 14:12:46 client.go:50: Client id: 3558 has bidded 100 on item
+INFO: 2021/12/07 14:12:46 frontend.go:253: BidMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:12:46 frontend.go:87: Forwarding message to replicas0. CliendID: 3558 Amount: 100  
+INFO: 2021/12/07 14:12:46 frontend.go:87: Forwarding message to replicas1. CliendID: 3558 Amount: 100  
+INFO: 2021/12/07 14:12:46 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:12:46 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:12:46 client.go:69: Client3558 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:12:49 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:12:49 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:12:49 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:12:49 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:12:49 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:12:49 client.go:93: Client3558 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:13:08 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:13:08 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:13:08 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:13:08 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:13:08 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:13:08 client.go:93: Client3558 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:13:29 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:13:29 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:13:29 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:13:29 frontend.go:133: Forwarding message to replicas 1
+INFO: 2021/12/07 14:13:29 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:13:29 client.go:93: Client3558 succesfully recieved QueryResponse from frontend
+INFO: 2021/12/07 14:13:33 client.go:50: Client id: 3558 has bidded 400 on item
+INFO: 2021/12/07 14:13:33 frontend.go:87: Forwarding message to replicas0. CliendID: 3558 Amount: 400  
+INFO: 2021/12/07 14:13:33 frontend.go:87: Forwarding message to replicas1. CliendID: 3558 Amount: 400  
+INFO: 2021/12/07 14:13:33 frontend.go:253: BidMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:13:33 frontend.go:121: Receiving message from server: NOW_HIGHEST_BIDDER
+ERROR: 2021/12/07 14:13:33 frontend.go:116: Error in receiving message from server
+INFO: 2021/12/07 14:13:33 frontend.go:101: Removed failed replica: replica1!
+INFO: 2021/12/07 14:13:33 client.go:69: Client3558 recieved BidStatusResponse from frontend. Status: NOW_HIGHEST_BIDDER
+INFO: 2021/12/07 14:13:37 client.go:77: Sending query from client 3558
+INFO: 2021/12/07 14:13:37 frontend.go:258: ResultMessage successfully recieved and queued from client3558
+INFO: 2021/12/07 14:13:37 client.go:80: Sending query from client 3558 was a succes!
+INFO: 2021/12/07 14:13:37 frontend.go:133: Forwarding message to replicas 0
+INFO: 2021/12/07 14:13:37 client.go:89: Auction finished
+
+---------------
+Output:
+---------------
+Client: 830 is ready for bidding
+- query
+Current highest bid: 100 from clientID: 3558 on cat. Time left: 45
+- bid 1000
+We have recieved your bid! You now the highest bidder!
+- query
+Current highest bid: 10000 from clientID: 3558 on cat. Time left: 3
+- query
+Auction finished. ClientID: 3558 won cat with highest bid: 10000
+- bid 200
+We have recieved your bid! You now the highest bidder!
+- query
+Current highest bid: 200 from clientID: 830 on dog. Time left: 36
+- bid 300
+We have recieved your bid! You now the highest bidder!
+- query
+Current highest bid: 300 from clientID: 830 on dog. Time left: 11
+- bid 100000
+No current auction. Try again later.
+-query
+No auction currently try bidding later, to see if any new items are up for auction.

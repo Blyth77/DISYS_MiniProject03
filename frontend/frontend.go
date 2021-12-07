@@ -110,33 +110,6 @@ func (s *Server) recieveBidResponseFromReplicasAndSendToClient() {
 	s.clearMajorityValues()
 }
 
-func (s *Server) clearMajorityValues() {
-	for k := range s.bidMajority {
-		s.bidMajority[k] = 0
-	}
-}
-
-func (s *Server) fillMajorityList(bid protos.Status) {
-	for k := range s.bidMajority {
-		if bid == k {
-			s.bidMajority[k] = s.bidMajority[k] + 1
-		}
-	}
-}
-
-func (s *Server) checkMajority() protos.Status {
-	var finalBid protos.Status
-	var count int
-
-	for k, v := range s.bidMajority {
-		if v > count {
-			finalBid = k
-			count = v
-		}
-	}
-	return finalBid
-}
-
 func (cl *frontendClienthandle) recieveBidReplicas() (*protos.StatusOfBid, error) {
 	msg, err := cl.streamBidOut.Recv()
 	if err != nil {
@@ -166,7 +139,7 @@ func (s *Server) forwardQueryToReplica() {
 func (s *Server) recieveQueryResponseFromReplicaAndSendToClient() {
 	var result *protos.ResponseToQuery
 
-	// majority
+	// Reds from one of the replicas. Majority is ignored, but replica is disconnected if there is an error.
 	for _, element := range s.replicas {
 		result = element.recieveResultReplicas()
 		if result == nil {
@@ -174,7 +147,7 @@ func (s *Server) recieveQueryResponseFromReplicaAndSendToClient() {
 			element.streamBidOut.CloseSend()
 		} else {
 			s.channelsHandler.ResultRecieveChannel <- result
-			break
+			return
 		}
 	}
 }
@@ -292,3 +265,31 @@ func (ch *FrontendConnection) closing(s *Server) {
 		conn.streamResultOut.CloseSend()
 	}
 }
+
+func (s *Server) clearMajorityValues() {
+	for k := range s.bidMajority {
+		s.bidMajority[k] = 0
+	}
+}
+
+func (s *Server) fillMajorityList(bid protos.Status) {
+	for k := range s.bidMajority {
+		if bid == k {
+			s.bidMajority[k] = s.bidMajority[k] + 1
+		}
+	}
+}
+
+func (s *Server) checkMajority() protos.Status {
+	var finalBid protos.Status
+	var count int
+
+	for k, v := range s.bidMajority {
+		if v > count {
+			finalBid = k
+			count = v
+		}
+	}
+	return finalBid
+}
+

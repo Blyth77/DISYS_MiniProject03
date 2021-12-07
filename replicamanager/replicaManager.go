@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"google.golang.org/grpc"
@@ -24,6 +25,7 @@ type Server struct {
 	finished             bool
 	item                 string
 	startingNew          bool
+	mu                   sync.Mutex
 }
 
 type HighestBidder struct {
@@ -55,6 +57,8 @@ func main() {
 			os.Exit(3)
 		}
 		if o == "new" {
+
+			s.mu.Lock()
 			if s.finished {
 				s.initateAuction()
 				msg := fmt.Sprintf("Initiating new auction with: Item: %v, Duration: %d", s.item, s.auctionTime)
@@ -63,6 +67,7 @@ func main() {
 			} else {
 				output("Ongoing auction!")
 			}
+			s.mu.Unlock()
 		}
 	}
 }
@@ -75,7 +80,7 @@ func (s *Server) initateAuction() {
 	s.item = item
 	s.auctionTime = time
 	s.finished = false
-	s.timeRunning = false 
+	s.timeRunning = false
 	s.startingNew = true
 	s.currentHighestBidder = HighestBidder{
 		HighestBidAmount: 0,
