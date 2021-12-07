@@ -2,7 +2,8 @@
 =============================================================
 
 NOTE: 
-The clean_log.go can be run to clean the log folders. To run clean_logs.go, give it an argument N. N being the number of replicas you wish the client's to "know", this is hardcoded to a listOfReplicaPorts.txt, that the client uses for node-discorvery. THIS IS NOT PART OF THE SYSTEM, only a helper program (We know it is violating the definition of distributed systems! The program can be used without it!)
+The clean_log.go can be run to clean the log folders, and also update the list of replica ports, that the front-end's will establish connections to. To run clean_logs.go, give it an argument N. N being the number of replicas you wish the front-end's to "know", this is hardcoded to a listOfReplicaPorts.txt,(node-discorvery). 
+THIS IS NOT PART OF THE SYSTEM, only a helper program (We know it is violating the definition of distributed systems! The system can be used without it!)
 
     If clean_logs is not run, 4 replica ports will be available by default:
         - port:  6001,
